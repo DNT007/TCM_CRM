@@ -17,24 +17,33 @@ function getLanIp() {
   return 'localhost';
 }
 
-const PORT        = process.env.PORT        || 3005;
-const LAN_IP      = getLanIp();
-// Nếu deploy production, set biến này trong .env để Swagger gọi đúng HTTPS
-// Ví dụ: API_BASE_URL=https://api.tecotec.vn
-const API_BASE_URL = process.env.API_BASE_URL || null;
+const PORT         = process.env.PORT         || 3005;
+const LAN_IP       = getLanIp();
+// Set PUBLIC_IP hoặc API_BASE_URL trong .env khi deploy lên server thật
+// Ví dụ: PUBLIC_IP=45.124.94.224  hoặc  API_BASE_URL=http://45.124.94.224:3005
+const PUBLIC_IP    = process.env.PUBLIC_IP    || null;
+const API_BASE_URL = process.env.API_BASE_URL
+  ? process.env.API_BASE_URL.replace(/\/$/, '')
+  : null;
 
 /**
  * Xây danh sách servers cho Swagger UI.
- * - Nếu có API_BASE_URL trong .env → đưa lên đầu (dùng khi production HTTPS)
- * - Luôn giữ LAN IP và localhost phía sau để dev local vẫn dùng được
+ * Thứ tự ưu tiên: API_BASE_URL > PUBLIC_IP > LAN IP > localhost
+ * Server đầu tiên trong list sẽ được Swagger UI chọn mặc định.
  */
 function buildServers() {
   const list = [];
   if (API_BASE_URL) {
-    list.push({ url: API_BASE_URL, description: 'Production Server' });
+    list.push({ url: API_BASE_URL, description: 'Production / Public Server' });
+  } else if (PUBLIC_IP) {
+    list.push({ url: `http://${PUBLIC_IP}:${PORT}`, description: `Public IP (${PUBLIC_IP})` });
   }
-  list.push({ url: `http://${LAN_IP}:${PORT}`, description: `LAN Server (${LAN_IP})` });
-  list.push({ url: `http://localhost:${PORT}`,  description: 'Local (chỉ dùng trên máy host)' });
+  // Chỉ thêm LAN nếu khác với public
+  const lanUrl = `http://${LAN_IP}:${PORT}`;
+  if (!list.some(s => s.url === lanUrl)) {
+    list.push({ url: lanUrl, description: `LAN Server (${LAN_IP})` });
+  }
+  list.push({ url: `http://localhost:${PORT}`, description: 'Local (chỉ dùng trên máy host)' });
   return list;
 }
 

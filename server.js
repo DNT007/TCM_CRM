@@ -22,11 +22,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Swagger UI (không cần auth) ───────────────────
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+// ─── Swagger UI tại "/" (không cần auth) ──────────
+app.use('/', swaggerUi.serve);
+app.get('/', swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { background-color: #1a3a5c; }',
   customSiteTitle: 'TCT_CRM API Docs',
 }));
+
+// Redirect /api-docs về /
+app.get('/api-docs', (req, res) => {
+  res.redirect('/');
+});
 
 // Endpoint trả raw OpenAPI JSON (dùng để import vào Postman)
 app.get('/api-docs.json', (req, res) => {
@@ -77,7 +83,7 @@ async function startServer() {
       console.log('');
       console.log('🚀 TCT_CRM API Server đang chạy!');
       console.log(`   Local:   http://localhost:${PORT}`);
-      console.log(`   Docs:    http://localhost:${PORT}/api-docs`);
+      console.log(`   Docs:    http://localhost:${PORT}/`);
       console.log(`   Health:  http://localhost:${PORT}/health`);
       console.log('');
       console.log('📌 Endpoints:');
