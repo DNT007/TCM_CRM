@@ -13,6 +13,7 @@ const productsRouter      = require('./routes/products');
 const reportsRouter       = require('./routes/reports');
 const opportunitiesRouter = require('./routes/opportunity');
 const quotationsRouter    = require('./routes/quotation');
+const conversionRouter    = require('./routes/conversion');
 
 const app  = express();
 const PORT = process.env.PORT || 3005;
@@ -59,6 +60,7 @@ app.use('/api/products',      productsRouter);
 app.use('/api/reports',       reportsRouter);
 app.use('/api/opportunities', opportunitiesRouter);
 app.use('/api/quotations',    quotationsRouter);
+app.use('/api/conversion',    conversionRouter);
 
 // ─── 404 handler ───────────────────────────────────
 app.use((req, res) => {
@@ -89,6 +91,14 @@ async function startServer() {
       console.log('📌 Endpoints:');
       console.log(`   GET  /api/customers`);
       console.log(`   GET  /api/orders`);
+      console.log(`   GET  /api/orders/stats/by-time`);
+      console.log(`   GET  /api/orders/stats/revenue-by-time`);
+      console.log(`   GET  /api/orders/stats/revenue-by-sales-rep`);
+      console.log(`   GET  /api/orders/stats/revenue-by-product`);
+      console.log(`   GET  /api/orders/stats/revenue-by-area`);
+      console.log(`   GET  /api/orders/stats/revenue-by-customer-group`);
+      console.log(`   GET  /api/orders/stats/avg-deal-size`);
+      console.log(`   GET  /api/orders/stats/quotation-to-order-time`);
       console.log(`   GET  /api/leads`);
       console.log(`   GET  /api/products`);
       console.log(`   GET  /api/reports/revenue`);
@@ -100,6 +110,12 @@ async function startServer() {
       console.log(`   GET  /api/quotations/stats/by-time`);
       console.log(`   GET  /api/quotations/stats/by-sales-rep`);
       console.log(`   GET  /api/quotations/stats/win-loss-rate`);
+      console.log(`   GET  /api/conversion/lead-to-opportunity`);
+      console.log(`   GET  /api/conversion/opportunity-to-quotation`);
+      console.log(`   GET  /api/conversion/quotation-to-order`);
+      console.log(`   GET  /api/conversion/lead-to-order`);
+      console.log(`   GET  /api/conversion/win-rate-by-sales-rep`);
+      console.log(`   GET  /api/conversion/win-rate-by-product`);
       console.log('');
     });
   } catch (err) {
