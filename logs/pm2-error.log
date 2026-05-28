@@ -1,0 +1,239 @@
+2026-05-20 10:30:09: (node:10136) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:10: (node:16212) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:10: (node:19956) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:11: (node:15712) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:11: (node:21476) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:11: (node:5212) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:12: (node:7520) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:12: (node:14476) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:13: (node:19932) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:13: (node:13976) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:14: (node:19196) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:14: (node:20964) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:15: (node:16732) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:15: (node:6088) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:16: (node:19608) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:16: (node:9084) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Error: bind EADDRINUSE null:3005
+    at listenOnPrimaryHandle (node:net:2029:18)
+    at shared (node:internal/cluster/child:158:3)
+    at Worker.<anonymous> (node:internal/cluster/child:111:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:520:35)
+    at emit (node:internal/child_process:948:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+2026-05-20 10:30:51: (node:15188) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-20 10:30:51: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-20 10:35:39: (node:9184) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-20 10:35:39: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-20 10:41:43: [GET /leads] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'CongTy'.
+2026-05-20 17:42:00: (node:7456) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-20 17:42:00: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-21 08:34:28: (node:13828) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-21 08:34:28: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-21 08:35:57: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-21 08:35:57: ❌ Không thể khởi động server: [object Object]
+2026-05-21 08:35:58: (node:7184) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-21 08:35:58: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-21 08:38:11: (node:3844) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-21 08:38:11: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-21 08:39:48: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-21 08:39:48: ❌ Không thể khởi động server: [object Object]
+2026-05-21 08:39:49: (node:2016) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-21 08:39:49: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-21 17:28:35: (node:9984) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-21 17:28:35: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-22 08:44:27: (node:15292) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-22 08:44:27: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-22 17:37:44: (node:13672) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-22 17:37:44: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-22 19:32:44: (node:12132) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-22 19:32:44: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-23 02:08:10: (node:9684) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-23 02:08:10: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-23 08:34:44: (node:9592) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-23 08:34:44: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-23 12:41:09: (node:21960) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-23 12:41:09: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-24 20:12:53: (node:1940) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-24 20:12:53: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 08:17:08: (node:2060) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 08:17:08: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 08:18:40: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-25 08:18:40: ❌ Không thể khởi động server: [object Object]
+2026-05-25 08:18:42: (node:15128) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 08:18:42: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 14:49:10: (node:9624) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 14:49:10: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 17:10:55: (node:7516) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 17:10:55: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 17:12:18: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-25 17:12:18: ❌ Không thể khởi động server: [object Object]
+2026-05-25 17:12:21: (node:17332) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 17:12:21: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 18:13:14: (node:5888) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 18:13:14: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 23:38:38: (node:7652) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 23:38:38: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 23:41:46: (node:12864) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 23:41:46: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-25 23:43:21: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-25 23:43:21: ❌ Không thể khởi động server: [object Object]
+2026-05-25 23:43:21: (node:14480) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-25 23:43:21: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-26 08:31:31: (node:9632) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-26 08:31:31: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-26 17:37:12: (node:7928) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-26 17:37:12: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-27 00:20:56: (node:1784) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-27 00:20:56: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-27 08:29:40: (node:6912) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-27 08:29:40: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-27 08:31:11: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-27 08:31:11: ❌ Không thể khởi động server: [object Object]
+2026-05-27 08:31:11: (node:16404) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-27 08:31:11: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-27 08:31:11: ❌ Lỗi kết nối SQL Server: [object Object]
+2026-05-27 08:31:11: ❌ Không thể khởi động server: [object Object]
+2026-05-27 08:31:12: (node:16648) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-27 08:31:12: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-27 17:41:03: (node:11148) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-27 17:41:03: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-28 08:43:54: (node:14344) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-28 08:43:54: (Use `node --trace-deprecation ...` to show where the warning was created)
