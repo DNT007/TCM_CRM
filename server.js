@@ -14,6 +14,7 @@ const reportsRouter       = require('./routes/reports');
 const opportunitiesRouter = require('./routes/opportunity');
 const quotationsRouter    = require('./routes/quotation');
 const conversionRouter    = require('./routes/conversion');
+const activityRouter      = require('./routes/activity');
 
 const app  = express();
 const PORT = process.env.PORT || 3005;
@@ -61,6 +62,7 @@ app.use('/api/reports',       reportsRouter);
 app.use('/api/opportunities', opportunitiesRouter);
 app.use('/api/quotations',    quotationsRouter);
 app.use('/api/conversion',    conversionRouter);
+app.use('/api/activity',      activityRouter);
 
 // ─── 404 handler ───────────────────────────────────
 app.use((req, res) => {
@@ -116,6 +118,10 @@ async function startServer() {
       console.log(`   GET  /api/conversion/lead-to-order`);
       console.log(`   GET  /api/conversion/win-rate-by-sales-rep`);
       console.log(`   GET  /api/conversion/win-rate-by-product`);
+      console.log(`   GET  /api/activity/stats/by-type-over-time`);
+      console.log(`   GET  /api/activity/stats/by-sales-rep`);
+      console.log(`   GET  /api/activity/stats/avg-per-lead`);
+      console.log(`   GET  /api/activity/stats/first-response-time`);
       console.log('');
     });
   } catch (err) {
