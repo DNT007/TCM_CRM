@@ -321,7 +321,7 @@ router.get('/opportunity-to-quotation', async (req, res) => {
  *     description: |
  *       Tính Win Rate – tỉ lệ % số Báo giá được chuyển thành Đơn hàng thực tế.
  *       - **Tổng Báo giá**: đếm Quotation có TrangThai != 0 trong khoảng thời gian lọc.
- *       - **Báo giá thành đơn**: đếm Quotation đã có ít nhất 1 Order liên kết (Order.SoHopDong = Quotation.SoHopDong).
+ *       - **Báo giá thành đơn**: đếm Quotation đã có ít nhất 1 Order liên kết (`Order.Id = Quotation.Id`).
  *       - **Win Rate**: `(bao_gia_thanh_don / tong_bao_gia) * 100` (%).
  *
  *       Lọc ngày dựa trên `Quotation.NgayTao`. Hỗ trợ `group_by` để xem xu hướng theo kỳ.
@@ -376,11 +376,12 @@ router.get('/quotation-to-order', async (req, res) => {
 
     const sumResult = await reqSum.query(`
       SELECT
-        COUNT(q.Id)                   AS tong_bao_gia,
-        COUNT(DISTINCT o.SoHopDong)   AS bao_gia_thanh_don
+        COUNT(q.Id)                                         AS tong_bao_gia,
+        COUNT(DISTINCT CASE WHEN o.Id IS NOT NULL
+              THEN q.Id END)                                AS bao_gia_thanh_don
       FROM dbo.Quotation q
       LEFT JOIN dbo.[Order] o
-        ON o.SoHopDong = q.SoHopDong AND o.TrangThai = 1
+        ON o.Id = q.Id AND o.TrangThai = 1
       WHERE q.TrangThai != 0
         ${dateExtra}
     `);
@@ -403,12 +404,13 @@ router.get('/quotation-to-order', async (req, res) => {
 
       const trendResult = await reqTrend.query(`
         SELECT
-          ${periodExpr}                   AS period,
-          COUNT(q.Id)                     AS tong_bao_gia,
-          COUNT(DISTINCT o.SoHopDong)     AS bao_gia_thanh_don
+          ${periodExpr}                                       AS period,
+          COUNT(q.Id)                                         AS tong_bao_gia,
+          COUNT(DISTINCT CASE WHEN o.Id IS NOT NULL
+                THEN q.Id END)                                AS bao_gia_thanh_don
         FROM dbo.Quotation q
         LEFT JOIN dbo.[Order] o
-          ON o.SoHopDong = q.SoHopDong AND o.TrangThai = 1
+          ON o.Id = q.Id AND o.TrangThai = 1
         WHERE q.TrangThai != 0
           ${dateExtra}
         GROUP BY ${periodExpr}
@@ -450,7 +452,7 @@ router.get('/quotation-to-order', async (req, res) => {
  *       Tính tỉ lệ % số Lead cuối cùng trở thành Đơn hàng (toàn bộ phễu).
  *       - **Tổng Lead**: đếm Lead có TrangThai = 1 trong khoảng thời gian lọc.
  *       - **Lead thành đơn**: đếm Lead đã có chuỗi Lead → Opportunity → Quotation → Order thành công.
- *         Chain: `Lead → Opportunity.LeadId → Quotation.OpportunityId → Order.SoHopDong = Quotation.SoHopDong`.
+ *         Chain: `Lead → Opportunity.LeadId → Quotation.OpportunityId → Order.Id = Quotation.Id`.
  *       - **Tỉ lệ**: `(lead_thanh_don / tong_lead) * 100` (%).
  *
  *       Hỗ trợ `group_by` để xem xu hướng theo kỳ thời gian.
@@ -538,9 +540,9 @@ router.get('/lead-to-order', async (req, res) => {
         LEFT JOIN dbo.Quotation q
           ON q.OpportunityId = op.Id AND q.TrangThai != 0
         LEFT JOIN dbo.[Order] ord
-          ON ord.SoHopDong = q.SoHopDong AND ord.TrangThai = 1
-        WHERE l.TrangThai = 1
-          ${dateExtra}
+        ON ord.Id = q.Id AND ord.TrangThai = 1
+      WHERE l.TrangThai = 1
+        ${dateExtra}
         GROUP BY l.Id
       ) AS sub
     `);
@@ -577,7 +579,7 @@ router.get('/lead-to-order', async (req, res) => {
           LEFT JOIN dbo.Quotation q
             ON q.OpportunityId = op.Id AND q.TrangThai != 0
           LEFT JOIN dbo.[Order] ord
-            ON ord.SoHopDong = q.SoHopDong AND ord.TrangThai = 1
+            ON ord.Id = q.Id AND ord.TrangThai = 1
           WHERE l.TrangThai = 1
             ${dateExtra}
           GROUP BY l.Id, ${periodExpr}
@@ -620,7 +622,7 @@ router.get('/lead-to-order', async (req, res) => {
  *     description: |
  *       Tỉ lệ % Báo giá chuyển thành Đơn hàng phân tách theo từng nhân viên phụ trách Cơ hội (`Opportunity.NguoiXuLyId`).
  *       - **Tổng Báo giá**: mỗi Quotation liên kết qua `Quotation.OpportunityId → Opportunity.NguoiXuLyId`.
- *       - **Báo giá thành đơn**: Quotation đã có `Order.SoHopDong = Quotation.SoHopDong`.
+ *       - **Báo giá thành đơn**: Quotation đã có `Order.Id = Quotation.Id`.
  *       - **Win Rate**: `(bao_gia_thanh_don / tong_bao_gia) * 100` (%).
  *
  *       Lọc ngày theo `Quotation.NgayTao`.
@@ -675,14 +677,14 @@ router.get('/win-rate-by-sales-rep', async (req, res) => {
         ISNULL(u.UserName, '')                                AS UserName,
         COUNT(q.Id)                                           AS tong_bao_gia,
         COUNT(DISTINCT CASE WHEN ord.Id IS NOT NULL
-              THEN q.SoHopDong END)                          AS bao_gia_thanh_don
+              THEN q.Id END)                                  AS bao_gia_thanh_don
       FROM dbo.Quotation q
       LEFT JOIN dbo.Opportunity op
         ON op.Id = q.OpportunityId AND op.TrangThai = 1
       LEFT JOIN dbo.[UserFunction] u
         ON u.UserId = op.NguoiXuLyId
       LEFT JOIN dbo.[Order] ord
-        ON ord.SoHopDong = q.SoHopDong AND ord.TrangThai = 1
+        ON ord.Id = q.Id AND ord.TrangThai = 1
       WHERE q.TrangThai != 0
         ${dateExtra}
       GROUP BY op.NguoiXuLyId, u.FullName, u.UserName
@@ -822,14 +824,14 @@ router.get('/win-rate-by-product', async (req, res) => {
         ${selectDims},
         COUNT(DISTINCT q.Id)                                           AS tong_bao_gia,
         COUNT(DISTINCT CASE WHEN ord.Id IS NOT NULL
-              THEN q.SoHopDong END)                                   AS bao_gia_thanh_don
+              THEN q.Id END)                                           AS bao_gia_thanh_don
       FROM dbo.Quotation q
       INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
       INNER JOIN dbo.Product              p   ON p.Id = lqp.ProductId
       LEFT  JOIN dbo.Taxonomy             tn  ON tn.Id  = p.NhomThietBiId
       LEFT  JOIN dbo.Taxonomy             tnp ON tnp.Id = tn.KhoaChaId
       LEFT  JOIN dbo.[Order] ord
-        ON ord.SoHopDong = q.SoHopDong AND ord.TrangThai = 1
+        ON ord.Id = q.Id AND ord.TrangThai = 1
       ${whereClause}
       GROUP BY ${groupDims}
       ORDER BY bao_gia_thanh_don DESC

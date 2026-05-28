@@ -948,4 +948,179 @@ router.get('/stats/by-brand', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 10. GET /api/opportunities/stats/by-product
+//     Số cơ hội theo từng SẢN PHẨM cụ thể (drill-down đến mức Product)
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * @swagger
+ * /api/opportunities/stats/by-product:
+ *   get:
+ *     summary: "Số cơ hội theo từng sản phẩm / nhóm sản phẩm"
+ *     description: |
+ *       Thống kê cơ hội theo từng **sản phẩm cụ thể** (drill-down đến mức Product).
+ *       Mỗi dòng trả về thông tin sản phẩm kèm nhóm cha / nhóm con và số cơ hội liên quan.
+ *       - Dùng `group_id` để lọc theo **nhóm sản phẩm** (cha hoặc con).
+ *       - Dùng `search` để tìm theo tên / mã sản phẩm.
+ *       Join chain: Opportunity → Quotation → LinkQuotationProduct → Product → Taxonomy.
+ *     tags: [Opportunities]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/optyDateFrom'
+ *       - $ref: '#/components/parameters/optyDateTo'
+ *       - in: query
+ *         name: group_id
+ *         description: Lọc theo ID nhóm sản phẩm (cha hoặc con)
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: search
+ *         description: Tìm theo tên hoặc mã sản phẩm
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Thống kê cơ hội theo từng sản phẩm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 filter:  { type: object }
+ *                 tong_san_pham: { type: integer, description: "Số sản phẩm có trong kết quả" }
+ *                 tong_co_hoi_co_san_pham: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       product_id:      { type: integer }
+ *                       ma_san_pham:     { type: string,  example: "INS-001" }
+ *                       ten_san_pham:    { type: string,  example: "Thước kẹp Insize 1234-150" }
+ *                       nhom_cha_id:     { type: integer }
+ *                       ten_nhom_cha:    { type: string,  example: "Thiết bị đo cơ khí chính xác" }
+ *                       nhom_con_id:     { type: integer }
+ *                       ten_nhom_con:    { type: string,  example: "Thước kẹp" }
+ *                       thuong_hieu:     { type: string,  example: "Insize" }
+ *                       so_co_hoi:       { type: integer }
+ *                       tong_so_luong:   { type: integer }
+ *                       tong_gia_tri:    { type: number }
+ *                       trung_binh_gia:  { type: number }
+ *                       ti_le:           { type: number,  description: "% so với tổng cơ hội có sản phẩm" }
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/stats/by-product', async (req, res) => {
+  try {
+    const pool     = getPool();
+    const dateFrom = req.query.date_from || null;
+    const dateTo   = req.query.date_to   || null;
+    const groupId  = req.query.group_id  ? parseInt(req.query.group_id, 10) : null;
+    const search   = req.query.search    ? req.query.search.trim() : null;
+
+    // ── Xây WHERE ────────────────────────────────────────────────────────────
+    const dateConds = [];
+    if (dateFrom) dateConds.push(`o.NgayTao >= @dateFrom`);
+    if (dateTo)   dateConds.push(`o.NgayTao <= @dateTo`);
+
+    // Lọc theo nhóm sản phẩm: nhóm cha (tnp) hoặc nhóm con (tn)
+    if (groupId) {
+      dateConds.push(`(tnp.Id = @groupId OR (tnp.Id IS NULL AND tn.Id = @groupId) OR tn.Id = @groupId)`);
+    }
+    // Tìm theo tên / mã sản phẩm
+    if (search) {
+      dateConds.push(`(p.TenSanPham LIKE @search OR p.SKU LIKE @search)`);
+    }
+
+    const baseWhere = ['o.TrangThai = 1', 'q.TrangThai != 0', ...dateConds].join(' AND ');
+
+    // ── Query chính ──────────────────────────────────────────────────────────
+    const request = pool.request();
+    if (dateFrom) request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+    if (dateTo)   request.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
+    if (groupId)  request.input('groupId',  sql.Int, groupId);
+    if (search)   request.input('search',   sql.NVarChar, `%${search}%`);
+
+    const result = await request.query(`
+      SELECT
+        p.Id                                                   AS product_id,
+        ISNULL(p.SKU,  '')                                   AS ma_san_pham,
+        ISNULL(p.TenSanPham, N'(Chưa có tên)')                AS ten_san_pham,
+        tnp.Id                                                 AS nhom_cha_id,
+        ISNULL(tnp.TieuDe,  N'(Chưa phân nhóm cha)')          AS ten_nhom_cha,
+        tn.Id                                                  AS nhom_con_id,
+        ISNULL(tn.TieuDe,   N'(Chưa phân nhóm)')              AS ten_nhom_con,
+        ISNULL(tb.TieuDe,   N'Không rõ thương hiệu')          AS thuong_hieu,
+        COUNT(DISTINCT o.Id)                                   AS so_co_hoi,
+        SUM(lqp.SoLuong)                                       AS tong_so_luong,
+        SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong)          AS tong_gia_tri,
+        AVG(CAST(lqp.GiaBan AS FLOAT))                         AS trung_binh_gia
+      FROM dbo.Opportunity o
+      INNER JOIN dbo.Quotation              q   ON q.OpportunityId = o.Id
+      INNER JOIN dbo.LinkQuotationProduct   lqp ON lqp.QuotationId = q.Id
+      INNER JOIN dbo.Product                p   ON p.Id = lqp.ProductId
+      LEFT  JOIN dbo.Taxonomy               tn  ON tn.Id  = p.NhomThietBiId
+      LEFT  JOIN dbo.Taxonomy               tnp ON tnp.Id = tn.KhoaChaId
+      LEFT  JOIN dbo.Taxonomy               tb  ON tb.Id  = p.ThuongHieuId
+      WHERE ${baseWhere}
+      GROUP BY
+        p.Id, p.SKU, p.TenSanPham,
+        tnp.Id, tnp.TieuDe,
+        tn.Id,  tn.TieuDe,
+        tb.TieuDe
+      ORDER BY so_co_hoi DESC
+    `);
+
+    // ── Tổng cơ hội để tính tỷ lệ ───────────────────────────────────────────
+    const reqTotal = pool.request();
+    if (dateFrom) reqTotal.input('dateFrom', sql.DateTime, new Date(dateFrom));
+    if (dateTo)   reqTotal.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
+    if (groupId)  reqTotal.input('groupId',  sql.Int, groupId);
+    if (search)   reqTotal.input('search',   sql.NVarChar, `%${search}%`);
+
+    const totalResult = await reqTotal.query(`
+      SELECT COUNT(DISTINCT o.Id) AS total
+      FROM dbo.Opportunity o
+      INNER JOIN dbo.Quotation              q   ON q.OpportunityId = o.Id
+      INNER JOIN dbo.LinkQuotationProduct   lqp ON lqp.QuotationId = q.Id
+      INNER JOIN dbo.Product                p   ON p.Id = lqp.ProductId
+      LEFT  JOIN dbo.Taxonomy               tn  ON tn.Id  = p.NhomThietBiId
+      LEFT  JOIN dbo.Taxonomy               tnp ON tnp.Id = tn.KhoaChaId
+      WHERE ${baseWhere}
+    `);
+    const tongCoHoi = totalResult.recordset[0].total;
+
+    res.json({
+      success: true,
+      filter: {
+        date_from: dateFrom,
+        date_to:   dateTo,
+        group_id:  groupId,
+        search,
+      },
+      tong_san_pham:           result.recordset.length,
+      tong_co_hoi_co_san_pham: tongCoHoi,
+      data: result.recordset.map(r => ({
+        product_id:     r.product_id,
+        ma_san_pham:    r.ma_san_pham,
+        ten_san_pham:   r.ten_san_pham,
+        nhom_cha_id:    r.nhom_cha_id,
+        ten_nhom_cha:   r.ten_nhom_cha,
+        nhom_con_id:    r.nhom_con_id,
+        ten_nhom_con:   r.ten_nhom_con,
+        thuong_hieu:    r.thuong_hieu,
+        so_co_hoi:      r.so_co_hoi,
+        tong_so_luong:  r.tong_so_luong,
+        tong_gia_tri:   r.tong_gia_tri   != null ? Math.round(r.tong_gia_tri)   : 0,
+        trung_binh_gia: r.trung_binh_gia != null ? Math.round(r.trung_binh_gia) : 0,
+        ti_le: tongCoHoi > 0 ? parseFloat(((r.so_co_hoi / tongCoHoi) * 100).toFixed(2)) : 0,
+      })),
+    });
+  } catch (err) {
+    console.error('[GET /opportunities/stats/by-product]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
+

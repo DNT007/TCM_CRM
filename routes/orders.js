@@ -534,7 +534,7 @@ router.get('/stats/revenue-by-product', async (req, res) => {
         ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)    AS tong_doanh_thu,
         ISNULL(AVG(CAST(lqp.GiaBan AS FLOAT)), 0)                   AS trung_binh_gia
       FROM dbo.[Order] o
-      INNER JOIN dbo.Quotation              q   ON q.SoHopDong = o.SoHopDong
+      INNER JOIN dbo.Quotation              q   ON q.Id = o.Id
       INNER JOIN dbo.LinkQuotationProduct   lqp ON lqp.QuotationId = q.Id
       INNER JOIN dbo.Product                p   ON p.Id = lqp.ProductId
       LEFT  JOIN dbo.Taxonomy               tn  ON tn.Id  = p.NhomThietBiId
@@ -646,7 +646,7 @@ router.get('/stats/revenue-by-area', async (req, res) => {
         COUNT(DISTINCT o.Id)                                        AS so_don_hang,
         ISNULL(SUM(CAST(o.PhiDonHang AS FLOAT)), 0)                AS tong_doanh_thu
       FROM dbo.[Order] o
-      INNER JOIN dbo.Quotation    q  ON q.SoHopDong = o.SoHopDong
+      INNER JOIN dbo.Quotation    q  ON q.Id = o.Id
       LEFT  JOIN dbo.Lead         l  ON l.Id = q.LeadId
       LEFT  JOIN dbo.RawCustomer  rc ON rc.Id = l.RawCustomerId
       LEFT  JOIN dbo.Taxonomy     t  ON t.Id  = rc.AreaId AND t.TaxonomyType = 1
@@ -760,7 +760,7 @@ router.get('/stats/revenue-by-customer-group', async (req, res) => {
         ISNULL(SUM(CAST(o.PhiDonHang AS FLOAT)), 0)                AS tong_doanh_thu,
         ISNULL(AVG(CAST(o.PhiDonHang AS FLOAT)), 0)                AS trung_binh
       FROM dbo.[Order] o
-      INNER JOIN dbo.Quotation    q  ON q.SoHopDong  = o.SoHopDong
+      INNER JOIN dbo.Quotation    q  ON q.Id = o.Id
       LEFT  JOIN dbo.Opportunity  op ON op.Id         = q.OpportunityId
       LEFT  JOIN dbo.Customer     c  ON c.Id          = op.PartnerId
       ${whereClause}
@@ -805,7 +805,6 @@ router.get('/stats/revenue-by-customer-group', async (req, res) => {
  *     description: |
  *       Tính giá trị đơn hàng trung bình (`AVG(PhiDonHang)`) theo từng kỳ thời gian.
  *       Trả về summary tổng hợp và (nếu có `group_by`) xu hướng theo ngày/tuần/tháng.
- *       Hỗ trợ lọc theo `sales_rep_id` để xem theo nhân viên cụ thể.
  *     tags: [Orders]
  *     security:
  *       - ApiKeyAuth: []
@@ -822,10 +821,6 @@ router.get('/stats/revenue-by-customer-group', async (req, res) => {
  *         name: group_by
  *         description: "Xem xu hướng theo kỳ (để trống = chỉ trả summary)"
  *         schema: { type: string, enum: [day, week, month] }
- *       - in: query
- *         name: sales_rep_id
- *         description: "Lọc theo ID nhân viên cụ thể"
- *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Giá trị đơn hàng trung bình
@@ -859,23 +854,20 @@ router.get('/stats/revenue-by-customer-group', async (req, res) => {
  */
 router.get('/stats/avg-deal-size', async (req, res) => {
   try {
-    const pool       = getPool();
-    const dateFrom   = req.query.date_from    || null;
-    const dateTo     = req.query.date_to      || null;
-    const groupBy    = req.query.group_by     || null;
-    const salesRepId = req.query.sales_rep_id || null;
+    const pool     = getPool();
+    const dateFrom = req.query.date_from || null;
+    const dateTo   = req.query.date_to   || null;
+    const groupBy  = req.query.group_by  || null;
 
     const conds = ['o.TrangThai = 1', 'o.PhiDonHang IS NOT NULL'];
-    if (dateFrom)   conds.push('o.NgayCapNhat >= @dateFrom');
-    if (dateTo)     conds.push('o.NgayCapNhat <= @dateTo');
-    if (salesRepId) conds.push('o.NguoiCapNhatId = @salesRepId');
+    if (dateFrom) conds.push('o.NgayCapNhat >= @dateFrom');
+    if (dateTo)   conds.push('o.NgayCapNhat <= @dateTo');
     const whereClause = `WHERE ${conds.join(' AND ')}`;
 
     // ── Summary ──────────────────────────────────────────────────────────────
     const reqSummary = pool.request();
-    if (dateFrom)   reqSummary.input('dateFrom',   sql.DateTime, new Date(dateFrom));
-    if (dateTo)     reqSummary.input('dateTo',     sql.DateTime, new Date(dateTo + 'T23:59:59'));
-    if (salesRepId) reqSummary.input('salesRepId', sql.NVarChar, salesRepId);
+    if (dateFrom) reqSummary.input('dateFrom', sql.DateTime, new Date(dateFrom));
+    if (dateTo)   reqSummary.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
 
     const summaryResult = await reqSummary.query(`
       SELECT
@@ -903,9 +895,8 @@ router.get('/stats/avg-deal-size', async (req, res) => {
       const periodExpr = buildPeriodExpr('o', groupBy);
 
       const reqTrend = pool.request();
-      if (dateFrom)   reqTrend.input('dateFrom',   sql.DateTime, new Date(dateFrom));
-      if (dateTo)     reqTrend.input('dateTo',     sql.DateTime, new Date(dateTo + 'T23:59:59'));
-      if (salesRepId) reqTrend.input('salesRepId', sql.NVarChar, salesRepId);
+      if (dateFrom) reqTrend.input('dateFrom', sql.DateTime, new Date(dateFrom));
+      if (dateTo)   reqTrend.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
 
       const trendResult = await reqTrend.query(`
         SELECT
@@ -929,7 +920,7 @@ router.get('/stats/avg-deal-size', async (req, res) => {
 
     res.json({
       success: true,
-      filter:  { date_from: dateFrom, date_to: dateTo, group_by: groupBy, sales_rep_id: salesRepId },
+      filter:  { date_from: dateFrom, date_to: dateTo, group_by: groupBy },
       summary,
       data: trendData,
     });
@@ -1012,7 +1003,6 @@ router.get('/stats/quotation-to-order-time', async (req, res) => {
     const conds = [
       'o.TrangThai = 1',
       'q.TrangThai != 0',
-      'o.SoHopDong IS NOT NULL',
       'o.NgayCapNhat >= q.NgayTao',
     ];
     if (dateFrom) conds.push('o.NgayCapNhat >= @dateFrom');
@@ -1031,7 +1021,7 @@ router.get('/stats/quotation-to-order-time', async (req, res) => {
         MIN(CAST(DATEDIFF(minute, q.NgayTao, o.NgayCapNhat) AS FLOAT))       AS min_phut,
         MAX(CAST(DATEDIFF(minute, q.NgayTao, o.NgayCapNhat) AS FLOAT))       AS max_phut
       FROM dbo.[Order] o
-      INNER JOIN dbo.Quotation q ON q.SoHopDong = o.SoHopDong
+      INNER JOIN dbo.Quotation q ON q.Id = o.Id
       ${whereClause}
     `);
 
@@ -1060,7 +1050,7 @@ router.get('/stats/quotation-to-order-time', async (req, res) => {
           COUNT(*)                                                                AS so_cap,
           AVG(CAST(DATEDIFF(minute, q.NgayTao, o.NgayCapNhat) AS FLOAT))         AS avg_phut
         FROM dbo.[Order] o
-        INNER JOIN dbo.Quotation q ON q.SoHopDong = o.SoHopDong
+        INNER JOIN dbo.Quotation q ON q.Id = o.Id
         ${whereClause}
         GROUP BY ${periodExpr}
         ORDER BY period ASC

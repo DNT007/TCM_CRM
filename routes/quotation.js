@@ -799,6 +799,222 @@ router.get('/stats/avg-edit-count', async (req, res) => {
   }
 });
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 6. GET /api/quotations/stats/by-product
+//    Số báo giá theo từng sản phẩm cụ thể
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * @swagger
+ * /api/quotations/stats/by-product:
+ *   get:
+ *     summary: "Số báo giá theo sản phẩm"
+ *     description: |
+ *       Thống kê số lượng báo giá và tổng giá trị theo từng **sản phẩm** cụ thể.
+ *       JOIN: `dbo.Quotation` → `dbo.LinkQuotationProduct` → `dbo.Product`.
+ *       Hỗ trợ lọc theo `date_from` / `date_to` và giới hạn kết quả bằng `top`.
+ *     tags: [Quotations]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/quoteDateFrom'
+ *       - $ref: '#/components/parameters/quoteDateTo'
+ *       - in: query
+ *         name: top
+ *         description: "Giới hạn số sản phẩm trả về (mặc định: 20)"
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: sort_by
+ *         description: "Sắp xếp theo so_bao_gia hoặc tong_gia_tri (mặc định: so_bao_gia)"
+ *         schema: { type: string, enum: [so_bao_gia, tong_gia_tri], default: so_bao_gia }
+ *     responses:
+ *       200:
+ *         description: Phân bố báo giá theo sản phẩm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 filter:  { type: object }
+ *                 tong_san_pham: { type: integer, description: "Số sản phẩm có trong báo giá" }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       product_id:       { type: string }
+ *                       ten_san_pham:     { type: string }
+ *                       ma_san_pham:      { type: string }
+ *                       so_bao_gia:       { type: integer, description: "Số báo giá chứa sản phẩm này" }
+ *                       tong_so_luong:    { type: number,  description: "Tổng số lượng trong tất cả báo giá" }
+ *                       tong_gia_tri:     { type: number,  description: "Tổng thành tiền (VNĐ)" }
+ *                       trung_binh_don_gia: { type: number }
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/stats/by-product', async (req, res) => {
+  try {
+    const pool     = getPool();
+    const dateFrom = req.query.date_from || null;
+    const dateTo   = req.query.date_to   || null;
+    const top      = parseInt(req.query.top || '20', 10);
+    const sortBy   = req.query.sort_by === 'tong_gia_tri' ? 'tong_gia_tri' : 'so_bao_gia';
+
+    // WHERE áp dụng trên Quotation
+    const conds = ['q.TrangThai != 0'];
+    if (dateFrom) conds.push(`q.NgayTao >= @dateFrom`);
+    if (dateTo)   conds.push(`q.NgayTao <= @dateTo`);
+    const whereClause = `WHERE ${conds.join(' AND ')}`;
+
+    const request = pool.request();
+    addDateParams(request, { dateFrom, dateTo });
+    request.input('topN', sql.Int, top);
+
+    const result = await request.query(`
+      SELECT TOP (@topN)
+        p.Id                                                          AS product_id,
+        ISNULL(p.TenHang, ISNULL(p.TenSanPham, N'Không xác định'))  AS ten_san_pham,
+        ISNULL(p.MaHang, ISNULL(p.MaSanPham, ''))                   AS ma_san_pham,
+        COUNT(DISTINCT q.Id)                                          AS so_bao_gia,
+        ISNULL(SUM(lqp.SoLuong), 0)                                  AS tong_so_luong,
+        ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)     AS tong_gia_tri,
+        ISNULL(AVG(CAST(lqp.GiaBan AS FLOAT)), 0)                    AS trung_binh_don_gia
+      FROM dbo.Quotation q
+      INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
+      INNER JOIN dbo.Product p                ON lqp.ProductId   = p.Id
+      ${whereClause}
+      GROUP BY p.Id, p.TenHang, p.TenSanPham, p.MaHang, p.MaSanPham
+      ORDER BY ${sortBy} DESC
+    `);
+
+    res.json({
+      success:        true,
+      filter:         { date_from: dateFrom, date_to: dateTo, top, sort_by: sortBy },
+      tong_san_pham:  result.recordset.length,
+      data:           result.recordset,
+    });
+  } catch (err) {
+    console.error('[GET /quotations/stats/by-product]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 7. GET /api/quotations/stats/by-product-group
+//    Số báo giá theo nhóm sản phẩm (Taxonomy cha)
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * @swagger
+ * /api/quotations/stats/by-product-group:
+ *   get:
+ *     summary: "Số báo giá theo nhóm sản phẩm (Taxonomy)"
+ *     description: |
+ *       Thống kê số lượng báo giá và tổng giá trị theo **nhóm sản phẩm cha** (Taxonomy).
+ *       JOIN: `dbo.Quotation` → `dbo.LinkQuotationProduct` → `dbo.Product` → `dbo.Taxonomy` (nhóm cha).
+ *       Sản phẩm không thuộc nhóm nào sẽ được gom vào `Không xác định`.
+ *       Hỗ trợ tham số `level` để xem theo nhóm cha (`parent`) hoặc nhóm con (`child`).
+ *     tags: [Quotations]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/quoteDateFrom'
+ *       - $ref: '#/components/parameters/quoteDateTo'
+ *       - in: query
+ *         name: level
+ *         description: "parent = nhóm cha; child = nhóm con trực tiếp (mặc định: parent)"
+ *         schema: { type: string, enum: [parent, child], default: parent }
+ *     responses:
+ *       200:
+ *         description: Phân bố báo giá theo nhóm sản phẩm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 filter:  { type: object }
+ *                 tong_bao_gia: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       group_id:      { type: string }
+ *                       ten_nhom:      { type: string }
+ *                       so_bao_gia:    { type: integer }
+ *                       tong_so_luong: { type: number }
+ *                       tong_gia_tri:  { type: number }
+ *                       ti_le:         { type: number, description: "% trên tổng số báo giá" }
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/stats/by-product-group', async (req, res) => {
+  try {
+    const pool     = getPool();
+    const dateFrom = req.query.date_from || null;
+    const dateTo   = req.query.date_to   || null;
+    const level    = req.query.level === 'child' ? 'child' : 'parent';
+
+    // WHERE áp dụng trên Quotation
+    const conds = ['q.TrangThai != 0'];
+    if (dateFrom) conds.push(`q.NgayTao >= @dateFrom`);
+    if (dateTo)   conds.push(`q.NgayTao <= @dateTo`);
+    const whereClause = `WHERE ${conds.join(' AND ')}`;
+
+    const request = pool.request();
+    addDateParams(request, { dateFrom, dateTo });
+
+    let groupIdExpr, groupNameExpr;
+    if (level === 'child') {
+      // Nhóm con: lấy Taxonomy trực tiếp của Product (NhomThietBiId)
+      groupIdExpr   = `ISNULL(CAST(tn.Id AS NVARCHAR(50)), 'unknown')`;
+      groupNameExpr = `ISNULL(tn.TieuDe, N'Không xác định')`;
+    } else {
+      // Nhóm cha: lấy Taxonomy cha (KhoaChaId)
+      groupIdExpr   = `ISNULL(CAST(tnp.Id AS NVARCHAR(50)), ISNULL(CAST(tn.Id AS NVARCHAR(50)), 'unknown'))`;
+      groupNameExpr = `ISNULL(tnp.TieuDe, ISNULL(tn.TieuDe, N'Không xác định'))`;
+    }
+
+    const result = await request.query(`
+      SELECT
+        ${groupIdExpr}                                               AS group_id,
+        ${groupNameExpr}                                             AS ten_nhom,
+        COUNT(DISTINCT q.Id)                                         AS so_bao_gia,
+        ISNULL(SUM(lqp.SoLuong), 0)                                 AS tong_so_luong,
+        ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)    AS tong_gia_tri
+      FROM dbo.Quotation q
+      INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
+      INNER JOIN dbo.Product p                ON lqp.ProductId   = p.Id
+      LEFT  JOIN dbo.Taxonomy tn              ON tn.Id  = p.NhomThietBiId
+      LEFT  JOIN dbo.Taxonomy tnp             ON tnp.Id = tn.KhoaChaId
+      ${whereClause}
+      GROUP BY ${groupIdExpr}, ${groupNameExpr}
+      ORDER BY so_bao_gia DESC
+    `);
+
+    const tong_bao_gia = result.recordset.reduce((s, r) => s + (r.so_bao_gia || 0), 0);
+
+    const data = result.recordset.map(r => ({
+      ...r,
+      ti_le: tong_bao_gia > 0
+        ? parseFloat(((r.so_bao_gia / tong_bao_gia) * 100).toFixed(2))
+        : 0,
+    }));
+
+    res.json({
+      success:      true,
+      filter:       { date_from: dateFrom, date_to: dateTo, level },
+      tong_bao_gia,
+      data,
+    });
+  } catch (err) {
+    console.error('[GET /quotations/stats/by-product-group]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
+
 
 
