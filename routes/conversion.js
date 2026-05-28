@@ -319,9 +319,16 @@ router.get('/opportunity-to-quotation', async (req, res) => {
  *   get:
  *     summary: "Tỉ lệ Báo giá → Đơn hàng (Win Rate)"
  *     description: |
- *       Tính Win Rate – tỉ lệ % số Báo giá được chuyển thành Đơn hàng thực tế.
+ *       Tính Win Rate – tỉ lệ % số Báo giá được chuyển thành Đơn hàng (Chốt thành công).
+ *       Dựa trên trường `Quotation.TinhTrang`:
+ *       - **1** = Nháp (Draft)
+ *       - **2** = Đã gửi (Delivered)
+ *       - **3** = Đã xác nhận (Confirmed)
+ *       - **4** = **Thắng / Chốt (Close Won)** ← được tính là "thành đơn"
+ *       - **5** = Thua / Từ chối (Close Lost)
+ *
  *       - **Tổng Báo giá**: đếm Quotation có TrangThai != 0 trong khoảng thời gian lọc.
- *       - **Báo giá thành đơn**: đếm Quotation đã có ít nhất 1 Order liên kết (`Order.Id = Quotation.Id`).
+ *       - **Báo giá thành đơn**: đếm Quotation có `TinhTrang = 4` (Close Won).
  *       - **Win Rate**: `(bao_gia_thanh_don / tong_bao_gia) * 100` (%).
  *
  *       Lọc ngày dựa trên `Quotation.NgayTao`. Hỗ trợ `group_by` để xem xu hướng theo kỳ.
@@ -346,8 +353,13 @@ router.get('/opportunity-to-quotation', async (req, res) => {
  *                   type: object
  *                   properties:
  *                     tong_bao_gia:        { type: integer, description: "Tổng số Báo giá" }
- *                     bao_gia_thanh_don:   { type: integer, description: "Báo giá đã tạo được Đơn hàng" }
- *                     win_rate_phan_tram:  { type: number,  description: "Win Rate (%)" }
+ *                     bao_gia_thanh_don:   { type: integer, description: "TinhTrang=4 Close Won" }
+ *                     bao_gia_thua:        { type: integer, description: "TinhTrang=5 Close Lost" }
+ *                     bao_gia_xac_nhan:    { type: integer, description: "TinhTrang=3 Đã xác nhận" }
+ *                     bao_gia_da_gui:      { type: integer, description: "TinhTrang=2 Đã gửi" }
+ *                     bao_gia_nhap:        { type: integer, description: "TinhTrang=1 Nháp" }
+ *                     win_rate_phan_tram:  { type: number,  description: "Win Rate trên đã có kết quả (%)" }
+ *                     win_rate_toan_bo:    { type: number,  description: "Win Rate trên toàn bộ báo giá (%)" }
  *                 data:
  *                   type: array
  *                   description: Xu hướng theo kỳ (chỉ có khi truyền group_by)
@@ -356,8 +368,12 @@ router.get('/opportunity-to-quotation', async (req, res) => {
  *                     properties:
  *                       period:             { type: string }
  *                       tong_bao_gia:       { type: integer }
- *                       bao_gia_thanh_don:  { type: integer }
+ *                       bao_gia_thanh_don:  { type: integer, description: "TinhTrang=4" }
+ *                       bao_gia_thua:       { type: integer, description: "TinhTrang=5" }
+ *                       bao_gia_xac_nhan:   { type: integer, description: "TinhTrang=3" }
+ *                       bao_gia_da_gui:     { type: integer, description: "TinhTrang=2" }
  *                       win_rate_phan_tram: { type: number }
+ *                       win_rate_toan_bo:   { type: number }
  *       500:
  *         description: Lỗi server
  */
@@ -376,21 +392,32 @@ router.get('/quotation-to-order', async (req, res) => {
 
     const sumResult = await reqSum.query(`
       SELECT
-        COUNT(q.Id)                                         AS tong_bao_gia,
-        COUNT(DISTINCT CASE WHEN o.Id IS NOT NULL
-              THEN q.Id END)                                AS bao_gia_thanh_don
+        COUNT(q.Id)                                               AS tong_bao_gia,
+        COUNT(CASE WHEN q.TinhTrang = 4 THEN 1 END)              AS bao_gia_thanh_don,  -- Close Won
+        COUNT(CASE WHEN q.TinhTrang = 5 THEN 1 END)              AS bao_gia_thua,       -- Close Lost
+        COUNT(CASE WHEN q.TinhTrang = 3 THEN 1 END)              AS bao_gia_xac_nhan,   -- Đã xác nhận
+        COUNT(CASE WHEN q.TinhTrang = 2 THEN 1 END)              AS bao_gia_da_gui,     -- Đã gửi
+        COUNT(CASE WHEN q.TinhTrang = 1 THEN 1 END)              AS bao_gia_nhap        -- Nháp
       FROM dbo.Quotation q
-      LEFT JOIN dbo.[Order] o
-        ON o.Id = q.Id AND o.TrangThai = 1
       WHERE q.TrangThai != 0
         ${dateExtra}
     `);
 
     const s = sumResult.recordset[0];
+    const tongCoKetQua = (s.bao_gia_thanh_don || 0) + (s.bao_gia_thua || 0);
     const summary = {
-      tong_bao_gia:       s.tong_bao_gia,
-      bao_gia_thanh_don:  s.bao_gia_thanh_don,
-      win_rate_phan_tram: s.tong_bao_gia > 0
+      tong_bao_gia:        s.tong_bao_gia,
+      bao_gia_thanh_don:   s.bao_gia_thanh_don,  // TinhTrang = 4 (Close Won)
+      bao_gia_thua:        s.bao_gia_thua,        // TinhTrang = 5 (Close Lost)
+      bao_gia_xac_nhan:    s.bao_gia_xac_nhan,   // TinhTrang = 3 (Đã xác nhận)
+      bao_gia_da_gui:      s.bao_gia_da_gui,      // TinhTrang = 2 (Đã gửi)
+      bao_gia_nhap:        s.bao_gia_nhap,         // TinhTrang = 1 (Nháp)
+      // Win Rate tính trên tổng đã có kết quả (Close Won + Close Lost)
+      win_rate_phan_tram: tongCoKetQua > 0
+        ? parseFloat(((s.bao_gia_thanh_don / tongCoKetQua) * 100).toFixed(2))
+        : 0,
+      // Win Rate tính trên toàn bộ báo giá
+      win_rate_toan_bo: s.tong_bao_gia > 0
         ? parseFloat(((s.bao_gia_thanh_don / s.tong_bao_gia) * 100).toFixed(2))
         : 0,
     };
@@ -404,27 +431,36 @@ router.get('/quotation-to-order', async (req, res) => {
 
       const trendResult = await reqTrend.query(`
         SELECT
-          ${periodExpr}                                       AS period,
-          COUNT(q.Id)                                         AS tong_bao_gia,
-          COUNT(DISTINCT CASE WHEN o.Id IS NOT NULL
-                THEN q.Id END)                                AS bao_gia_thanh_don
+          ${periodExpr}                                              AS period,
+          COUNT(q.Id)                                                AS tong_bao_gia,
+          COUNT(CASE WHEN q.TinhTrang = 4 THEN 1 END)               AS bao_gia_thanh_don,  -- Close Won
+          COUNT(CASE WHEN q.TinhTrang = 5 THEN 1 END)               AS bao_gia_thua,       -- Close Lost
+          COUNT(CASE WHEN q.TinhTrang = 3 THEN 1 END)               AS bao_gia_xac_nhan,   -- Đã xác nhận
+          COUNT(CASE WHEN q.TinhTrang = 2 THEN 1 END)               AS bao_gia_da_gui      -- Đã gửi
         FROM dbo.Quotation q
-        LEFT JOIN dbo.[Order] o
-          ON o.Id = q.Id AND o.TrangThai = 1
         WHERE q.TrangThai != 0
           ${dateExtra}
         GROUP BY ${periodExpr}
         ORDER BY period ASC
       `);
 
-      trendData = trendResult.recordset.map(r => ({
-        period:             r.period,
-        tong_bao_gia:       r.tong_bao_gia,
-        bao_gia_thanh_don:  r.bao_gia_thanh_don,
-        win_rate_phan_tram: r.tong_bao_gia > 0
-          ? parseFloat(((r.bao_gia_thanh_don / r.tong_bao_gia) * 100).toFixed(2))
-          : 0,
-      }));
+      trendData = trendResult.recordset.map(r => {
+        const coKQ = (r.bao_gia_thanh_don || 0) + (r.bao_gia_thua || 0);
+        return {
+          period:             r.period,
+          tong_bao_gia:       r.tong_bao_gia,
+          bao_gia_thanh_don:  r.bao_gia_thanh_don,  // TinhTrang=4
+          bao_gia_thua:       r.bao_gia_thua,        // TinhTrang=5
+          bao_gia_xac_nhan:   r.bao_gia_xac_nhan,   // TinhTrang=3
+          bao_gia_da_gui:     r.bao_gia_da_gui,      // TinhTrang=2
+          win_rate_phan_tram: coKQ > 0
+            ? parseFloat(((r.bao_gia_thanh_don / coKQ) * 100).toFixed(2))
+            : 0,
+          win_rate_toan_bo: r.tong_bao_gia > 0
+            ? parseFloat(((r.bao_gia_thanh_don / r.tong_bao_gia) * 100).toFixed(2))
+            : 0,
+        };
+      });
     }
 
     res.json({
@@ -449,10 +485,15 @@ router.get('/quotation-to-order', async (req, res) => {
  *   get:
  *     summary: "Tỉ lệ chuyển đổi end-to-end: Lead → Đơn hàng"
  *     description: |
- *       Tính tỉ lệ % số Lead cuối cùng trở thành Đơn hàng (toàn bộ phễu).
- *       - **Tổng Lead**: đếm Lead có TrangThai = 1 trong khoảng thời gian lọc.
- *       - **Lead thành đơn**: đếm Lead đã có chuỗi Lead → Opportunity → Quotation → Order thành công.
- *         Chain: `Lead → Opportunity.LeadId → Quotation.OpportunityId → Order.Id = Quotation.Id`.
+ *       Tính tỉ lệ % số Lead cuối cùng chốt thành công (toàn bộ phễu bán hàng).
+ *
+ *       **Định nghĩa "Lead thành đơn"**: Lead có ít nhất 1 chuỗi:
+ *       `Lead → Opportunity (LeadId) → Quotation (OpportunityId, TinhTrang=4 Close Won)`.
+ *
+ *       - **Tổng Lead**: Lead có TrangThai = 1 trong khoảng thời gian lọc.
+ *       - **Lead có cơ hội**: Lead đã tạo Opportunity.
+ *       - **Lead có báo giá**: Lead có Opportunity đã tạo Quotation.
+ *       - **Lead thành đơn**: Lead có Quotation với `TinhTrang = 4` (Close Won).
  *       - **Tỉ lệ**: `(lead_thanh_don / tong_lead) * 100` (%).
  *
  *       Hỗ trợ `group_by` để xem xu hướng theo kỳ thời gian.
@@ -476,9 +517,11 @@ router.get('/quotation-to-order', async (req, res) => {
  *                 summary:
  *                   type: object
  *                   properties:
- *                     tong_lead:       { type: integer, description: "Tổng số Lead" }
- *                     lead_thanh_don:  { type: integer, description: "Lead đã trở thành Đơn hàng" }
- *                     ti_le_phan_tram: { type: number,  description: "Tỉ lệ end-to-end (%)" }
+ *                     tong_lead:         { type: integer, description: "Tổng Lead (TrangThai=1)" }
+ *                     lead_co_co_hoi:    { type: integer, description: "Lead đã tạo Opportunity" }
+ *                     lead_co_bao_gia:   { type: integer, description: "Lead có Opportunity đã tạo Quotation" }
+ *                     lead_thanh_don:    { type: integer, description: "Lead có Quotation TinhTrang=4 (Close Won)" }
+ *                     ti_le_phan_tram:   { type: number,  description: "Tỉ lệ end-to-end (%)" }
  *                 data:
  *                   type: array
  *                   description: Xu hướng theo kỳ (chỉ có khi truyền group_by)
@@ -487,6 +530,8 @@ router.get('/quotation-to-order', async (req, res) => {
  *                     properties:
  *                       period:          { type: string }
  *                       tong_lead:       { type: integer }
+ *                       lead_co_co_hoi:  { type: integer }
+ *                       lead_co_bao_gia: { type: integer }
  *                       lead_thanh_don:  { type: integer }
  *                       ti_le_phan_tram: { type: number }
  *       500:
@@ -502,55 +547,43 @@ router.get('/lead-to-order', async (req, res) => {
     const dateExtra = buildDateWhere('l', 'NgayTao', { dateFrom, dateTo });
 
     // ── Summary ──────────────────────────────────────────────────────────────
+    // "Lead thành đơn" = Lead có ít nhất 1 Quotation TinhTrang=4 (Close Won)
+    // Dùng subquery GROUP BY l.Id để tránh duplicate từ multiple joins
     const reqSum = pool.request();
     addDateParams(reqSum, { dateFrom, dateTo });
 
     const sumResult = await reqSum.query(`
       SELECT
-        COUNT(l.Id)              AS tong_lead,
-        COUNT(DISTINCT l.Id
-          -- chỉ đếm lead nào cuối cùng có Order
-        )                        AS tong_lead_raw,
-        SUM(CASE WHEN ord.Id IS NOT NULL THEN 1 ELSE 0 END) AS lead_thanh_don
-      FROM dbo.Lead l
-      LEFT JOIN dbo.Opportunity op
-        ON op.LeadId = l.Id AND op.TrangThai = 1
-      LEFT JOIN dbo.Quotation q
-        ON q.OpportunityId = op.Id AND q.TrangThai != 0
-      LEFT JOIN dbo.[Order] ord
-        ON ord.SoHopDong = q.SoHopDong AND ord.TrangThai = 1
-      WHERE l.TrangThai = 1
-        ${dateExtra}
-    `);
-
-    // Dùng subquery COUNT(DISTINCT) để tránh duplicate từ multiple joins
-    const reqSum2 = pool.request();
-    addDateParams(reqSum2, { dateFrom, dateTo });
-    const sumResult2 = await reqSum2.query(`
-      SELECT
-        COUNT(*)           AS tong_lead,
-        SUM(has_order)     AS lead_thanh_don
+        COUNT(*)                   AS tong_lead,
+        SUM(co_co_hoi)             AS lead_co_co_hoi,
+        SUM(co_bao_gia)            AS lead_co_bao_gia,
+        SUM(thanh_don)             AS lead_thanh_don
       FROM (
         SELECT
           l.Id,
-          MAX(CASE WHEN ord.Id IS NOT NULL THEN 1 ELSE 0 END) AS has_order
+          -- có Opportunity
+          MAX(CASE WHEN op.Id IS NOT NULL THEN 1 ELSE 0 END)              AS co_co_hoi,
+          -- có Quotation (bất kỳ trạng thái)
+          MAX(CASE WHEN q.Id IS NOT NULL THEN 1 ELSE 0 END)               AS co_bao_gia,
+          -- chốt thành công: Quotation TinhTrang = 4 (Close Won)
+          MAX(CASE WHEN q.TinhTrang = 4 THEN 1 ELSE 0 END)               AS thanh_don
         FROM dbo.Lead l
         LEFT JOIN dbo.Opportunity op
           ON op.LeadId = l.Id AND op.TrangThai = 1
         LEFT JOIN dbo.Quotation q
           ON q.OpportunityId = op.Id AND q.TrangThai != 0
-        LEFT JOIN dbo.[Order] ord
-        ON ord.Id = q.Id AND ord.TrangThai = 1
-      WHERE l.TrangThai = 1
-        ${dateExtra}
+        WHERE l.TrangThai = 1
+          ${dateExtra}
         GROUP BY l.Id
       ) AS sub
     `);
 
-    const s = sumResult2.recordset[0];
+    const s = sumResult.recordset[0];
     const summary = {
-      tong_lead:       s.tong_lead,
-      lead_thanh_don:  s.lead_thanh_don,
+      tong_lead:       s.tong_lead       || 0,
+      lead_co_co_hoi:  s.lead_co_co_hoi  || 0,
+      lead_co_bao_gia: s.lead_co_bao_gia || 0,
+      lead_thanh_don:  s.lead_thanh_don  || 0,
       ti_le_phan_tram: s.tong_lead > 0
         ? parseFloat(((s.lead_thanh_don / s.tong_lead) * 100).toFixed(2))
         : 0,
@@ -567,19 +600,21 @@ router.get('/lead-to-order', async (req, res) => {
         SELECT
           period,
           COUNT(*)        AS tong_lead,
-          SUM(has_order)  AS lead_thanh_don
+          SUM(co_co_hoi)  AS lead_co_co_hoi,
+          SUM(co_bao_gia) AS lead_co_bao_gia,
+          SUM(thanh_don)  AS lead_thanh_don
         FROM (
           SELECT
             l.Id,
-            ${periodExpr}                                              AS period,
-            MAX(CASE WHEN ord.Id IS NOT NULL THEN 1 ELSE 0 END)       AS has_order
+            ${periodExpr}                                                    AS period,
+            MAX(CASE WHEN op.Id IS NOT NULL THEN 1 ELSE 0 END)              AS co_co_hoi,
+            MAX(CASE WHEN q.Id IS NOT NULL THEN 1 ELSE 0 END)               AS co_bao_gia,
+            MAX(CASE WHEN q.TinhTrang = 4 THEN 1 ELSE 0 END)               AS thanh_don
           FROM dbo.Lead l
           LEFT JOIN dbo.Opportunity op
             ON op.LeadId = l.Id AND op.TrangThai = 1
           LEFT JOIN dbo.Quotation q
             ON q.OpportunityId = op.Id AND q.TrangThai != 0
-          LEFT JOIN dbo.[Order] ord
-            ON ord.Id = q.Id AND ord.TrangThai = 1
           WHERE l.TrangThai = 1
             ${dateExtra}
           GROUP BY l.Id, ${periodExpr}
@@ -590,8 +625,10 @@ router.get('/lead-to-order', async (req, res) => {
 
       trendData = trendResult.recordset.map(r => ({
         period:          r.period,
-        tong_lead:       r.tong_lead,
-        lead_thanh_don:  r.lead_thanh_don,
+        tong_lead:       r.tong_lead       || 0,
+        lead_co_co_hoi:  r.lead_co_co_hoi  || 0,
+        lead_co_bao_gia: r.lead_co_bao_gia || 0,
+        lead_thanh_don:  r.lead_thanh_don  || 0,
         ti_le_phan_tram: r.tong_lead > 0
           ? parseFloat(((r.lead_thanh_don / r.tong_lead) * 100).toFixed(2))
           : 0,
@@ -620,10 +657,17 @@ router.get('/lead-to-order', async (req, res) => {
  *   get:
  *     summary: "Win Rate theo sales rep"
  *     description: |
- *       Tỉ lệ % Báo giá chuyển thành Đơn hàng phân tách theo từng nhân viên phụ trách Cơ hội (`Opportunity.NguoiXuLyId`).
- *       - **Tổng Báo giá**: mỗi Quotation liên kết qua `Quotation.OpportunityId → Opportunity.NguoiXuLyId`.
- *       - **Báo giá thành đơn**: Quotation đã có `Order.Id = Quotation.Id`.
- *       - **Win Rate**: `(bao_gia_thanh_don / tong_bao_gia) * 100` (%).
+ *       Tỉ lệ % Báo giá chốt thành công (Close Won) phân tách theo từng nhân viên phụ trách cơ hội (`Opportunity.NguoiXuLyId`).
+ *
+ *       Dựa trên `Quotation.TinhTrang`:
+ *       - **4** = Close Won ← được tính là "thành đơn"
+ *       - **5** = Close Lost
+ *       - **3** = Đã xác nhận
+ *       - **2** = Đã gửi
+ *       - **1** = Nháp
+ *
+ *       - **win_rate_phan_tram**: tính trên số đã có kết quả (Close Won + Close Lost).
+ *       - **win_rate_toan_bo**: tính trên toàn bộ báo giá của rep đó.
  *
  *       Lọc ngày theo `Quotation.NgayTao`.
  *     tags: [Conversion]
@@ -642,20 +686,25 @@ router.get('/lead-to-order', async (req, res) => {
  *               properties:
  *                 success: { type: boolean }
  *                 filter:  { type: object }
- *                 tong_bao_gia:       { type: integer }
- *                 tong_bao_gia_thanh_don: { type: integer }
- *                 win_rate_tong:      { type: number, description: "Win Rate tổng (%)" }
+ *                 tong_bao_gia:            { type: integer }
+ *                 tong_bao_gia_thanh_don:  { type: integer, description: "TinhTrang=4" }
+ *                 tong_bao_gia_thua:       { type: integer, description: "TinhTrang=5" }
+ *                 win_rate_tong:           { type: number, description: "Win Rate trên đã có kết quả (%)" }
+ *                 win_rate_tong_toan_bo:   { type: number, description: "Win Rate trên toàn bộ (%)" }
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
- *                       sales_rep_id:      { type: string }
- *                       FullName:          { type: string }
- *                       UserName:          { type: string }
- *                       tong_bao_gia:      { type: integer }
- *                       bao_gia_thanh_don: { type: integer }
- *                       win_rate_phan_tram: { type: number, description: "Win Rate (%)" }
+ *                       sales_rep_id:       { type: string }
+ *                       FullName:           { type: string }
+ *                       UserName:           { type: string }
+ *                       tong_bao_gia:       { type: integer }
+ *                       bao_gia_thanh_don:  { type: integer, description: "TinhTrang=4 Close Won" }
+ *                       bao_gia_thua:       { type: integer, description: "TinhTrang=5 Close Lost" }
+ *                       bao_gia_dang_cho:   { type: integer, description: "TinhTrang=2,3" }
+ *                       win_rate_phan_tram: { type: number, description: "Win Rate trên đã có kết quả (%)" }
+ *                       win_rate_toan_bo:   { type: number, description: "Win Rate trên toàn bộ (%)" }
  *       500:
  *         description: Lỗi server
  */
@@ -670,48 +719,67 @@ router.get('/win-rate-by-sales-rep', async (req, res) => {
     const request = pool.request();
     addDateParams(request, { dateFrom, dateTo });
 
+    // Win Rate dựa trên Quotation.TinhTrang:
+    //   4 = Close Won  → báo giá thành đơn
+    //   5 = Close Lost → báo giá thua
+    //   2,3 = Đang chờ kết quả
     const result = await request.query(`
       SELECT
-        op.NguoiXuLyId                                        AS sales_rep_id,
-        ISNULL(u.FullName, N'Chưa phân công')                AS FullName,
-        ISNULL(u.UserName, '')                                AS UserName,
-        COUNT(q.Id)                                           AS tong_bao_gia,
-        COUNT(DISTINCT CASE WHEN ord.Id IS NOT NULL
-              THEN q.Id END)                                  AS bao_gia_thanh_don
+        op.NguoiXuLyId                                              AS sales_rep_id,
+        ISNULL(u.FullName, N'Chưa phân công')                     AS FullName,
+        ISNULL(u.UserName, '')                                       AS UserName,
+        COUNT(q.Id)                                                  AS tong_bao_gia,
+        COUNT(CASE WHEN q.TinhTrang = 4 THEN 1 END)                 AS bao_gia_thanh_don,  -- Close Won
+        COUNT(CASE WHEN q.TinhTrang = 5 THEN 1 END)                 AS bao_gia_thua,        -- Close Lost
+        COUNT(CASE WHEN q.TinhTrang IN (2, 3) THEN 1 END)           AS bao_gia_dang_cho     -- Đang chờ
       FROM dbo.Quotation q
       LEFT JOIN dbo.Opportunity op
         ON op.Id = q.OpportunityId AND op.TrangThai = 1
       LEFT JOIN dbo.[UserFunction] u
         ON u.UserId = op.NguoiXuLyId
-      LEFT JOIN dbo.[Order] ord
-        ON ord.Id = q.Id AND ord.TrangThai = 1
       WHERE q.TrangThai != 0
         ${dateExtra}
       GROUP BY op.NguoiXuLyId, u.FullName, u.UserName
       ORDER BY bao_gia_thanh_don DESC
     `);
 
-    const tongBaoGia       = result.recordset.reduce((s, r) => s + (r.tong_bao_gia      || 0), 0);
-    const tongBaoGiaThanhDon = result.recordset.reduce((s, r) => s + (r.bao_gia_thanh_don || 0), 0);
+    const tongBaoGia         = result.recordset.reduce((s, r) => s + (r.tong_bao_gia       || 0), 0);
+    const tongBaoGiaThanhDon = result.recordset.reduce((s, r) => s + (r.bao_gia_thanh_don  || 0), 0);
+    const tongBaoGiaThua     = result.recordset.reduce((s, r) => s + (r.bao_gia_thua       || 0), 0);
+    const tongCoKetQua       = tongBaoGiaThanhDon + tongBaoGiaThua;
 
     res.json({
       success: true,
       filter:  { date_from: dateFrom, date_to: dateTo },
       tong_bao_gia:            tongBaoGia,
       tong_bao_gia_thanh_don:  tongBaoGiaThanhDon,
-      win_rate_tong: tongBaoGia > 0
+      tong_bao_gia_thua:       tongBaoGiaThua,
+      // Win Rate trên tổng đã có kết quả (Close Won + Close Lost)
+      win_rate_tong: tongCoKetQua > 0
+        ? parseFloat(((tongBaoGiaThanhDon / tongCoKetQua) * 100).toFixed(2))
+        : 0,
+      // Win Rate trên toàn bộ báo giá
+      win_rate_tong_toan_bo: tongBaoGia > 0
         ? parseFloat(((tongBaoGiaThanhDon / tongBaoGia) * 100).toFixed(2))
         : 0,
-      data: result.recordset.map(r => ({
-        sales_rep_id:      r.sales_rep_id,
-        FullName:          r.FullName,
-        UserName:          r.UserName,
-        tong_bao_gia:      r.tong_bao_gia,
-        bao_gia_thanh_don: r.bao_gia_thanh_don,
-        win_rate_phan_tram: r.tong_bao_gia > 0
-          ? parseFloat(((r.bao_gia_thanh_don / r.tong_bao_gia) * 100).toFixed(2))
-          : 0,
-      })),
+      data: result.recordset.map(r => {
+        const coKQ = (r.bao_gia_thanh_don || 0) + (r.bao_gia_thua || 0);
+        return {
+          sales_rep_id:       r.sales_rep_id,
+          FullName:           r.FullName,
+          UserName:           r.UserName,
+          tong_bao_gia:       r.tong_bao_gia,
+          bao_gia_thanh_don:  r.bao_gia_thanh_don,  // TinhTrang=4
+          bao_gia_thua:       r.bao_gia_thua,        // TinhTrang=5
+          bao_gia_dang_cho:   r.bao_gia_dang_cho,    // TinhTrang=2,3
+          win_rate_phan_tram: coKQ > 0
+            ? parseFloat(((r.bao_gia_thanh_don / coKQ) * 100).toFixed(2))
+            : 0,
+          win_rate_toan_bo: r.tong_bao_gia > 0
+            ? parseFloat(((r.bao_gia_thanh_don / r.tong_bao_gia) * 100).toFixed(2))
+            : 0,
+        };
+      }),
     });
   } catch (err) {
     console.error('[GET /conversion/win-rate-by-sales-rep]', err.message);
@@ -729,10 +797,16 @@ router.get('/win-rate-by-sales-rep', async (req, res) => {
  *   get:
  *     summary: "Win Rate theo sản phẩm / nhóm sản phẩm"
  *     description: |
- *       Tỉ lệ % Báo giá chuyển thành Đơn hàng, phân tách theo sản phẩm hoặc nhóm sản phẩm.
+ *       Tỉ lệ % Báo giá chốt thành công (Close Won) phân tách theo sản phẩm hoặc nhóm sản phẩm.
+ *
+ *       Dựa trên `Quotation.TinhTrang`:
+ *       - **4** = Close Won ← được tính là "thành đơn"
+ *       - **5** = Close Lost
+ *
  *       - **Tổng Báo giá** (có chứa sản phẩm đó): số Quotation có LineItem sản phẩm đó.
- *       - **Báo giá thành đơn**: Quotation đã có `Order.SoHopDong = Quotation.SoHopDong`.
- *       - **Win Rate**: `(bao_gia_thanh_don / tong_bao_gia) * 100` (%).
+ *       - **Báo giá thành đơn**: Quotation có `TinhTrang = 4` (Close Won).
+ *       - **win_rate_phan_tram**: tính trên đã có kết quả (Close Won + Close Lost).
+ *       - **win_rate_toan_bo**: tính trên toàn bộ báo giá có sản phẩm đó.
  *
  *       Tham số `level`:
  *       - `group` (mặc định): nhóm theo **danh mục sản phẩm cấp cha** (Taxonomy)
@@ -761,22 +835,26 @@ router.get('/win-rate-by-sales-rep', async (req, res) => {
  *               properties:
  *                 success: { type: boolean }
  *                 filter:  { type: object }
- *                 tong_bao_gia:           { type: integer }
- *                 tong_bao_gia_thanh_don: { type: integer }
- *                 win_rate_tong:          { type: number, description: "Win Rate tổng (%)" }
+ *                 tong_bao_gia:            { type: integer }
+ *                 tong_bao_gia_thanh_don:  { type: integer, description: "TinhTrang=4 Close Won" }
+ *                 tong_bao_gia_thua:       { type: integer, description: "TinhTrang=5 Close Lost" }
+ *                 win_rate_tong:           { type: number, description: "Win Rate trên đã có kết quả (%)" }
+ *                 win_rate_tong_toan_bo:   { type: number, description: "Win Rate trên toàn bộ (%)" }
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:                { type: integer }
- *                       ten:               { type: string }
- *                       nhom_cha_id:       { type: integer, description: "Chỉ có ở level=subgroup" }
- *                       ten_nhom_cha:      { type: string,  description: "Chỉ có ở level=subgroup" }
- *                       ma_hang:           { type: string,  description: "Chỉ có ở level=product" }
- *                       tong_bao_gia:      { type: integer }
- *                       bao_gia_thanh_don: { type: integer }
- *                       win_rate_phan_tram: { type: number }
+ *                       id:                 { type: integer }
+ *                       ten:                { type: string }
+ *                       nhom_cha_id:        { type: integer, description: "Chỉ có ở level=subgroup" }
+ *                       ten_nhom_cha:       { type: string,  description: "Chỉ có ở level=subgroup" }
+ *                       ma_hang:            { type: string,  description: "Chỉ có ở level=product" }
+ *                       tong_bao_gia:       { type: integer }
+ *                       bao_gia_thanh_don:  { type: integer, description: "TinhTrang=4" }
+ *                       bao_gia_thua:       { type: integer, description: "TinhTrang=5" }
+ *                       win_rate_phan_tram: { type: number, description: "Win Rate trên đã có kết quả" }
+ *                       win_rate_toan_bo:   { type: number, description: "Win Rate trên toàn bộ" }
  *       500:
  *         description: Lỗi server
  */
@@ -799,54 +877,67 @@ router.get('/win-rate-by-product', async (req, res) => {
     let selectDims, groupDims;
 
     if (level === 'product') {
+      // Product: nhóm theo từng sản phẩm
       selectDims = `
-        p.Id                                                  AS id,
-        ISNULL(p.TenHang, N'(Không tên)')                    AS ten,
-        p.MaHang                                              AS ma_hang`;
-      groupDims = `p.Id, p.TenHang, p.MaHang`;
+        p.Id                                                   AS id,
+        ISNULL(p.TenSanPham, N'(Không tên)')                 AS ten,
+        p.SKU                                                  AS ma_hang`;
+      groupDims = `p.Id, p.TenSanPham, p.SKU`;
     } else if (level === 'subgroup') {
+      // Subgroup: nhóm theo danh mục sản phẩm cấp con
       selectDims = `
-        tn.Id                                                 AS id,
+        tn.Id                                                  AS id,
         ISNULL(tn.TieuDe, N'(Chưa phân nhóm)')              AS ten,
-        tnp.Id                                                AS nhom_cha_id,
+        tnp.Id                                                 AS nhom_cha_id,
         ISNULL(tnp.TieuDe, N'(Nhóm gốc)')                   AS ten_nhom_cha`;
       groupDims = `tn.Id, tn.TieuDe, tnp.Id, tnp.TieuDe`;
     } else {
-      // group (mặc định): nhóm theo nhóm sản phẩm cấp cha
+      // group (mặc định): nhóm theo danh mục cấp cha
+      // Dùng COALESCE(tnp.Id, tn.Id) trong cả SELECT lẫn GROUP BY
+      // để gộp đúng: sản phẩm không có nhóm con thì dùng chính nhóm con làm nhóm cha
       selectDims = `
-        ISNULL(tnp.Id,     tn.Id)                                        AS id,
-        ISNULL(tnp.TieuDe, ISNULL(tn.TieuDe, N'(Chưa phân nhóm)'))    AS ten`;
-      groupDims = `ISNULL(tnp.Id, tn.Id), ISNULL(tnp.TieuDe, tn.TieuDe)`;
+        COALESCE(tnp.Id,     tn.Id)                                                    AS id,
+        ISNULL(COALESCE(tnp.TieuDe, tn.TieuDe), N'(Chưa phân nhóm)')                AS ten`;
+      groupDims = `COALESCE(tnp.Id, tn.Id), COALESCE(tnp.TieuDe, tn.TieuDe)`;
     }
 
+    // Win Rate dựa trên Quotation.TinhTrang (không cần JOIN Order):
+    //   4 = Close Won  → báo giá thành đơn
+    //   5 = Close Lost → báo giá thua
+    // Dùng COUNT(DISTINCT q.Id) để khả dụng: 1 BG có nhiều sản phẩm nhưng chỉ đếm 1 lần
     const result = await request.query(`
       SELECT
         ${selectDims},
-        COUNT(DISTINCT q.Id)                                           AS tong_bao_gia,
-        COUNT(DISTINCT CASE WHEN ord.Id IS NOT NULL
-              THEN q.Id END)                                           AS bao_gia_thanh_don
+        COUNT(DISTINCT q.Id)                                             AS tong_bao_gia,
+        COUNT(DISTINCT CASE WHEN q.TinhTrang = 4 THEN q.Id END)         AS bao_gia_thanh_don,  -- Close Won
+        COUNT(DISTINCT CASE WHEN q.TinhTrang = 5 THEN q.Id END)         AS bao_gia_thua         -- Close Lost
       FROM dbo.Quotation q
       INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
       INNER JOIN dbo.Product              p   ON p.Id = lqp.ProductId
       LEFT  JOIN dbo.Taxonomy             tn  ON tn.Id  = p.NhomThietBiId
       LEFT  JOIN dbo.Taxonomy             tnp ON tnp.Id = tn.KhoaChaId
-      LEFT  JOIN dbo.[Order] ord
-        ON ord.Id = q.Id AND ord.TrangThai = 1
       ${whereClause}
       GROUP BY ${groupDims}
       ORDER BY bao_gia_thanh_don DESC
     `);
 
-    const tongBaoGia         = result.recordset.reduce((s, r) => s + (r.tong_bao_gia      || 0), 0);
-    const tongBaoGiaThanhDon = result.recordset.reduce((s, r) => s + (r.bao_gia_thanh_don || 0), 0);
+    const tongBaoGia         = result.recordset.reduce((s, r) => s + (r.tong_bao_gia       || 0), 0);
+    const tongBaoGiaThanhDon = result.recordset.reduce((s, r) => s + (r.bao_gia_thanh_don  || 0), 0);
+    const tongBaoGiaThua     = result.recordset.reduce((s, r) => s + (r.bao_gia_thua       || 0), 0);
+    const tongCoKetQua       = tongBaoGiaThanhDon + tongBaoGiaThua;
 
     const data = result.recordset.map(r => {
+      const coKQ = (r.bao_gia_thanh_don || 0) + (r.bao_gia_thua || 0);
       const row = {
-        id:                r.id,
-        ten:               r.ten,
-        tong_bao_gia:      r.tong_bao_gia,
-        bao_gia_thanh_don: r.bao_gia_thanh_don,
-        win_rate_phan_tram: r.tong_bao_gia > 0
+        id:                 r.id,
+        ten:                r.ten,
+        tong_bao_gia:       r.tong_bao_gia,
+        bao_gia_thanh_don:  r.bao_gia_thanh_don,  // TinhTrang=4
+        bao_gia_thua:       r.bao_gia_thua,        // TinhTrang=5
+        win_rate_phan_tram: coKQ > 0
+          ? parseFloat(((r.bao_gia_thanh_don / coKQ) * 100).toFixed(2))
+          : 0,
+        win_rate_toan_bo: r.tong_bao_gia > 0
           ? parseFloat(((r.bao_gia_thanh_don / r.tong_bao_gia) * 100).toFixed(2))
           : 0,
       };
@@ -860,7 +951,13 @@ router.get('/win-rate-by-product', async (req, res) => {
       filter:  { date_from: dateFrom, date_to: dateTo, level },
       tong_bao_gia:            tongBaoGia,
       tong_bao_gia_thanh_don:  tongBaoGiaThanhDon,
-      win_rate_tong: tongBaoGia > 0
+      tong_bao_gia_thua:       tongBaoGiaThua,
+      // Win Rate trên tổng đã có kết quả (Close Won + Close Lost)
+      win_rate_tong: tongCoKetQua > 0
+        ? parseFloat(((tongBaoGiaThanhDon / tongCoKetQua) * 100).toFixed(2))
+        : 0,
+      // Win Rate trên toàn bộ báo giá
+      win_rate_tong_toan_bo: tongBaoGia > 0
         ? parseFloat(((tongBaoGiaThanhDon / tongBaoGia) * 100).toFixed(2))
         : 0,
       data,
