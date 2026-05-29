@@ -457,3 +457,123 @@
 2026-05-28 08:43:54:    GET  /api/quotations/stats/by-sales-rep
 2026-05-28 08:43:54:    GET  /api/quotations/stats/win-loss-rate
 2026-05-28 08:43:54: 
+2026-05-28 18:37:11: ✅ Kết nối SQL Server thành công: (local) | DB: TCT_CRM
+2026-05-28 18:37:11: 
+2026-05-28 18:37:11: 🚀 TCT_CRM API Server đang chạy!
+2026-05-28 18:37:11:    Local:   http://localhost:3005
+2026-05-28 18:37:11:    Docs:    http://localhost:3005/
+2026-05-28 18:37:11:    Health:  http://localhost:3005/health
+2026-05-28 18:37:11: 
+2026-05-28 18:37:11: 📌 Endpoints:
+2026-05-28 18:37:11:    GET  /api/customers
+2026-05-28 18:37:11:    GET  /api/orders
+2026-05-28 18:37:11:    GET  /api/orders/stats/by-time
+2026-05-28 18:37:11:    GET  /api/orders/stats/revenue-by-time
+2026-05-28 18:37:11:    GET  /api/orders/stats/revenue-by-sales-rep
+2026-05-28 18:37:11:    GET  /api/orders/stats/revenue-by-product
+2026-05-28 18:37:11:    GET  /api/orders/stats/revenue-by-area
+2026-05-28 18:37:11:    GET  /api/orders/stats/revenue-by-customer-group
+2026-05-28 18:37:11:    GET  /api/orders/stats/avg-deal-size
+2026-05-28 18:37:11:    GET  /api/orders/stats/quotation-to-order-time
+2026-05-28 18:37:11:    GET  /api/leads
+2026-05-28 18:37:11:    GET  /api/products
+2026-05-28 18:37:11:    GET  /api/reports/revenue
+2026-05-28 18:37:11:    GET  /api/reports/orders-summary
+2026-05-28 18:37:11:    GET  /api/reports/customers-summary
+2026-05-28 18:37:11:    GET  /api/reports/leads-funnel
+2026-05-28 18:37:11:    GET  /api/opportunities/stats/by-time
+2026-05-28 18:37:11:    GET  /api/opportunities/stats/by-sales-rep
+2026-05-28 18:37:11:    GET  /api/quotations/stats/by-time
+2026-05-28 18:37:11:    GET  /api/quotations/stats/by-sales-rep
+2026-05-28 18:37:11:    GET  /api/quotations/stats/win-loss-rate
+2026-05-28 18:37:11:    GET  /api/conversion/lead-to-opportunity
+2026-05-28 18:37:11:    GET  /api/conversion/opportunity-to-quotation
+2026-05-28 18:37:11:    GET  /api/conversion/quotation-to-order
+2026-05-28 18:37:11:    GET  /api/conversion/lead-to-order
+2026-05-28 18:37:11:    GET  /api/conversion/win-rate-by-sales-rep
+2026-05-28 18:37:11:    GET  /api/conversion/win-rate-by-product
+2026-05-28 18:37:11:    GET  /api/activity/stats/by-type-over-time
+2026-05-28 18:37:11:    GET  /api/activity/stats/by-sales-rep
+2026-05-28 18:37:11:    GET  /api/activity/stats/avg-per-lead
+2026-05-28 18:37:11:    GET  /api/activity/stats/first-response-time
+2026-05-28 18:37:11: 
+2026-05-29 08:47:14: ✅ Kết nối SQL Server thành công: (local) | DB: TCT_CRM
+2026-05-29 08:47:14: 
+2026-05-29 08:47:14: 🚀 TCT_CRM API Server đang chạy!
+2026-05-29 08:47:14:    Local:   http://localhost:3005
+2026-05-29 08:47:14:    Docs:    http://localhost:3005/
+2026-05-29 08:47:14:    Health:  http://localhost:3005/health
+2026-05-29 08:47:14: 
+2026-05-29 08:47:14: 📌 Endpoints:
+2026-05-29 08:47:14:    GET  /api/customers
+2026-05-29 08:47:14:    GET  /api/orders
+2026-05-29 08:47:14:    GET  /api/orders/stats/by-time
+2026-05-29 08:47:14:    GET  /api/orders/stats/revenue-by-time
+2026-05-29 08:47:14:    GET  /api/orders/stats/revenue-by-sales-rep
+2026-05-29 08:47:14:    GET  /api/orders/stats/revenue-by-product
+2026-05-29 08:47:14:    GET  /api/orders/stats/revenue-by-area
+2026-05-29 08:47:14:    GET  /api/orders/stats/revenue-by-customer-group
+2026-05-29 08:47:14:    GET  /api/orders/stats/avg-deal-size
+2026-05-29 08:47:14:    GET  /api/orders/stats/quotation-to-order-time
+2026-05-29 08:47:14:    GET  /api/leads
+2026-05-29 08:47:14:    GET  /api/products
+2026-05-29 08:47:14:    GET  /api/reports/revenue
+2026-05-29 08:47:14:    GET  /api/reports/orders-summary
+2026-05-29 08:47:14:    GET  /api/reports/customers-summary
+2026-05-29 08:47:14:    GET  /api/reports/leads-funnel
+2026-05-29 08:47:14:    GET  /api/opportunities/stats/by-time
+2026-05-29 08:47:14:    GET  /api/opportunities/stats/by-sales-rep
+2026-05-29 08:47:14:    GET  /api/quotations/stats/by-time
+2026-05-29 08:47:14:    GET  /api/quotations/stats/by-sales-rep
+2026-05-29 08:47:14:    GET  /api/quotations/stats/win-loss-rate
+2026-05-29 08:47:14:    GET  /api/conversion/lead-to-opportunity
+2026-05-29 08:47:14:    GET  /api/conversion/opportunity-to-quotation
+2026-05-29 08:47:14:    GET  /api/conversion/quotation-to-order
+2026-05-29 08:47:14:    GET  /api/conversion/lead-to-order
+2026-05-29 08:47:14:    GET  /api/conversion/win-rate-by-sales-rep
+2026-05-29 08:47:14:    GET  /api/conversion/win-rate-by-product
+2026-05-29 08:47:14:    GET  /api/activity/stats/by-type-over-time
+2026-05-29 08:47:14:    GET  /api/activity/stats/by-sales-rep
+2026-05-29 08:47:14:    GET  /api/activity/stats/avg-per-lead
+2026-05-29 08:47:14:    GET  /api/activity/stats/first-response-time
+2026-05-29 08:47:14: 
+2026-05-29 09:04:04: ✅ Kết nối SQL Server thành công: (local) | DB: TCT_CRM
+2026-05-29 09:04:04: 
+2026-05-29 09:04:04: 🚀 TCT_CRM API Server đang chạy!
+2026-05-29 09:04:04:    Local:   http://localhost:3005
+2026-05-29 09:04:04:    Docs:    http://localhost:3005/
+2026-05-29 09:04:04:    Health:  http://localhost:3005/health
+2026-05-29 09:04:04: 
+2026-05-29 09:04:04: 📌 Endpoints:
+2026-05-29 09:04:04:    GET  /api/customers
+2026-05-29 09:04:04:    GET  /api/orders
+2026-05-29 09:04:04:    GET  /api/orders/stats/by-time
+2026-05-29 09:04:04:    GET  /api/orders/stats/revenue-by-time
+2026-05-29 09:04:04:    GET  /api/orders/stats/revenue-by-sales-rep
+2026-05-29 09:04:04:    GET  /api/orders/stats/revenue-by-product
+2026-05-29 09:04:04:    GET  /api/orders/stats/revenue-by-area
+2026-05-29 09:04:04:    GET  /api/orders/stats/revenue-by-customer-group
+2026-05-29 09:04:04:    GET  /api/orders/stats/avg-deal-size
+2026-05-29 09:04:04:    GET  /api/orders/stats/quotation-to-order-time
+2026-05-29 09:04:04:    GET  /api/leads
+2026-05-29 09:04:04:    GET  /api/products
+2026-05-29 09:04:04:    GET  /api/reports/revenue
+2026-05-29 09:04:04:    GET  /api/reports/orders-summary
+2026-05-29 09:04:04:    GET  /api/reports/customers-summary
+2026-05-29 09:04:04:    GET  /api/reports/leads-funnel
+2026-05-29 09:04:04:    GET  /api/opportunities/stats/by-time
+2026-05-29 09:04:04:    GET  /api/opportunities/stats/by-sales-rep
+2026-05-29 09:04:04:    GET  /api/quotations/stats/by-time
+2026-05-29 09:04:04:    GET  /api/quotations/stats/by-sales-rep
+2026-05-29 09:04:04:    GET  /api/quotations/stats/win-loss-rate
+2026-05-29 09:04:04:    GET  /api/conversion/lead-to-opportunity
+2026-05-29 09:04:04:    GET  /api/conversion/opportunity-to-quotation
+2026-05-29 09:04:04:    GET  /api/conversion/quotation-to-order
+2026-05-29 09:04:04:    GET  /api/conversion/lead-to-order
+2026-05-29 09:04:04:    GET  /api/conversion/win-rate-by-sales-rep
+2026-05-29 09:04:04:    GET  /api/conversion/win-rate-by-product
+2026-05-29 09:04:04:    GET  /api/activity/stats/by-type-over-time
+2026-05-29 09:04:04:    GET  /api/activity/stats/by-sales-rep
+2026-05-29 09:04:04:    GET  /api/activity/stats/avg-per-lead
+2026-05-29 09:04:04:    GET  /api/activity/stats/first-response-time
+2026-05-29 09:04:04: 

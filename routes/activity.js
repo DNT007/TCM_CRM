@@ -56,6 +56,8 @@ function buildPeriodExpr(alias, col, groupBy) {
 // ══════════════════════════════════════════════════════════════════════════════
 // 1. GET /api/activity/stats/by-type-over-time
 //    Số activity theo loại (gọi điện, email, gặp mặt...) theo thời gian
+//    - Loại ActivityType = 1 (Log hệ thống auto-generated)
+//    - Dùng NgayBatDau làm cột thời gian (thời điểm thực tế diễn ra hoạt động)
 // ══════════════════════════════════════════════════════════════════════════════
 /**
  * @swagger
@@ -63,14 +65,15 @@ function buildPeriodExpr(alias, col, groupBy) {
  *   get:
  *     summary: "Số activity theo loại và theo thời gian"
  *     description: |
- *       Thống kê số lượng hoạt động (Activity) phân loại theo loại hình (gọi điện, email, gặp mặt...).
- *       - **Tổng activity theo loại**: đếm Activity nhóm theo `LoaiHoatDong` (loại hoạt động).
+ *       Thống kê số lượng hoạt động sales (Activity) phân loại theo loại hình.
+ *       - **Chỉ tính hoạt động thực tế**: loại trừ `ActivityType = 1` (Log hệ thống tự động).
+ *       - **Mapping loại**: 2 = Gọi điện, 3 = Email, 4 = Gặp mặt/Họp, 5 = Nhiệm vụ, 6 = Khác.
+ *       - **Lọc ngày** theo `NgayBatDau` (thời điểm thực tế diễn ra hoạt động).
  *       - Hỗ trợ `group_by` để xem xu hướng theo ngày / tuần / tháng.
- *       - Lọc ngày theo `Activity.NgayTao`.
  *
  *       Kết quả trả về:
- *       - `summary`: tổng hợp theo từng loại activity (không phân kỳ thời gian).
- *       - `data`: phân bổ theo kỳ thời gian (chỉ có khi truyền `group_by`), mỗi dòng gồm `period`, `loai_hoat_dong`, `so_luong`.
+ *       - `summary`: tổng hợp theo từng loại (kèm `activity_type` value và `ti_le_phan_tram`).
+ *       - `data`: phân bổ theo kỳ thời gian (chỉ có khi truyền `group_by`).
  *     tags: [Activity]
  *     security:
  *       - ApiKeyAuth: []
@@ -95,7 +98,8 @@ function buildPeriodExpr(alias, col, groupBy) {
  *                   items:
  *                     type: object
  *                     properties:
- *                       loai_hoat_dong:  { type: string, description: "Loại hoạt động (gọi điện, email, gặp mặt...)" }
+ *                       activity_type:   { type: integer, description: "Giá trị ActivityType (2-6)" }
+ *                       loai_hoat_dong:  { type: string,  description: "Tên loại hoạt động" }
  *                       so_luong:        { type: integer, description: "Số lượng activity" }
  *                       ti_le_phan_tram: { type: number,  description: "Tỉ lệ % trên tổng" }
  *                 data:
@@ -104,9 +108,10 @@ function buildPeriodExpr(alias, col, groupBy) {
  *                   items:
  *                     type: object
  *                     properties:
- *                       period:         { type: string }
- *                       loai_hoat_dong: { type: string }
- *                       so_luong:       { type: integer }
+ *                       period:          { type: string }
+ *                       activity_type:   { type: integer }
+ *                       loai_hoat_dong:  { type: string }
+ *                       so_luong:        { type: integer }
  *       500:
  *         description: Lỗi server
  */
@@ -117,26 +122,45 @@ router.get('/stats/by-type-over-time', async (req, res) => {
     const dateTo   = req.query.date_to   || null;
     const groupBy  = req.query.group_by  || null;
 
-    const dateExtra = buildDateWhere('a', 'NgayTao', { dateFrom, dateTo });
+    // Dùng NgayBatDau (thời điểm thực tế diễn ra), fallback NgayTao nếu null
+    // Loại ActivityType = 1 (Log hệ thống auto-generated, không phải hoạt động sales)
+    // Loại dirty data: ngày tương lai bất thường (VD: có record NgayBatDau = năm 5202)
+    const conds = [
+      'a.TrangThai = 1',
+      'a.ActivityType != 1',
+      'ISNULL(a.NgayBatDau, a.NgayTao) <= GETDATE()', // loại dirty data ngày tương lai
+    ];
+    if (dateFrom) conds.push('ISNULL(a.NgayBatDau, a.NgayTao) >= @dateFrom');
+    if (dateTo)   conds.push('ISNULL(a.NgayBatDau, a.NgayTao) <= @dateTo');
+    const whereClause = 'WHERE ' + conds.join(' AND ');
 
-    // ── Summary: tổng theo loại ───────────────────────────────────────────────
+    // ── Summary: tổng theo loại hoạt động ────────────────────────────────────
     const reqSum = pool.request();
-    addDateParams(reqSum, { dateFrom, dateTo });
+    if (dateFrom) reqSum.input('dateFrom', sql.DateTime, new Date(dateFrom));
+    if (dateTo)   reqSum.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
 
     const sumResult = await reqSum.query(`
       SELECT
-        ISNULL(a.LoaiHoatDong, N'Không xác định') AS loai_hoat_dong,
-        COUNT(a.Id)                               AS so_luong
+        a.ActivityType                                    AS activity_type,
+        CASE a.ActivityType
+          WHEN 2 THEN N'Gọi điện'
+          WHEN 3 THEN N'Email'
+          WHEN 4 THEN N'Gặp mặt / Họp'
+          WHEN 5 THEN N'Nhiệm vụ'
+          WHEN 6 THEN N'Khác'
+          ELSE N'Không xác định'
+        END                                               AS loai_hoat_dong,
+        COUNT(a.Id)                                       AS so_luong
       FROM dbo.Activity a
-      WHERE a.TrangThai = 1
-        ${dateExtra}
-      GROUP BY a.LoaiHoatDong
+      ${whereClause}
+      GROUP BY a.ActivityType
       ORDER BY so_luong DESC
     `);
 
     const tongActivity = sumResult.recordset.reduce((s, r) => s + (r.so_luong || 0), 0);
 
     const summary = sumResult.recordset.map(r => ({
+      activity_type:   r.activity_type,
       loai_hoat_dong:  r.loai_hoat_dong,
       so_luong:        r.so_luong,
       ti_le_phan_tram: tongActivity > 0
@@ -147,24 +171,39 @@ router.get('/stats/by-type-over-time', async (req, res) => {
     // ── Xu hướng theo kỳ + loại ──────────────────────────────────────────────
     let trendData = [];
     if (groupBy) {
-      const periodExpr = buildPeriodExpr('a', 'NgayTao', groupBy);
-      const reqTrend   = pool.request();
-      addDateParams(reqTrend, { dateFrom, dateTo });
+      // Nhóm theo NgayBatDau (fallback NgayTao)
+      const c          = 'ISNULL(a.NgayBatDau, a.NgayTao)';
+      let periodExpr;
+      if (groupBy === 'day')  periodExpr = `FORMAT(${c}, 'yyyy-MM-dd')`;
+      else if (groupBy === 'week') periodExpr = `CONCAT(YEAR(${c}), '-W', RIGHT('00' + CAST(DATEPART(isowk, ${c}) AS VARCHAR(2)), 2))`;
+      else                    periodExpr = `FORMAT(${c}, 'yyyy-MM')`;
+
+      const reqTrend = pool.request();
+      if (dateFrom) reqTrend.input('dateFrom', sql.DateTime, new Date(dateFrom));
+      if (dateTo)   reqTrend.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
 
       const trendResult = await reqTrend.query(`
         SELECT
           ${periodExpr}                                   AS period,
-          ISNULL(a.LoaiHoatDong, N'Không xác định')      AS loai_hoat_dong,
+          a.ActivityType                                  AS activity_type,
+          CASE a.ActivityType
+            WHEN 2 THEN N'Gọi điện'
+            WHEN 3 THEN N'Email'
+            WHEN 4 THEN N'Gặp mặt / Họp'
+            WHEN 5 THEN N'Nhiệm vụ'
+            WHEN 6 THEN N'Khác'
+            ELSE N'Không xác định'
+          END                                             AS loai_hoat_dong,
           COUNT(a.Id)                                     AS so_luong
         FROM dbo.Activity a
-        WHERE a.TrangThai = 1
-          ${dateExtra}
-        GROUP BY ${periodExpr}, a.LoaiHoatDong
+        ${whereClause}
+        GROUP BY ${periodExpr}, a.ActivityType
         ORDER BY period ASC, so_luong DESC
       `);
 
       trendData = trendResult.recordset.map(r => ({
         period:         r.period,
+        activity_type:  r.activity_type,
         loai_hoat_dong: r.loai_hoat_dong,
         so_luong:       r.so_luong,
       }));
