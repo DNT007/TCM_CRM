@@ -820,10 +820,6 @@ router.get('/stats/avg-edit-count', async (req, res) => {
  *       - $ref: '#/components/parameters/quoteDateFrom'
  *       - $ref: '#/components/parameters/quoteDateTo'
  *       - in: query
- *         name: top
- *         description: "Giới hạn số sản phẩm trả về (mặc định: 20)"
- *         schema: { type: integer, default: 20 }
- *       - in: query
  *         name: sort_by
  *         description: "Sắp xếp theo so_bao_gia hoặc tong_gia_tri (mặc định: so_bao_gia)"
  *         schema: { type: string, enum: [so_bao_gia, tong_gia_tri], default: so_bao_gia }
@@ -858,7 +854,6 @@ router.get('/stats/by-product', async (req, res) => {
     const pool     = getPool();
     const dateFrom = req.query.date_from || null;
     const dateTo   = req.query.date_to   || null;
-    const top      = parseInt(req.query.top || '20', 10);
     const sortBy   = req.query.sort_by === 'tong_gia_tri' ? 'tong_gia_tri' : 'so_bao_gia';
 
     // WHERE áp dụng trên Quotation
@@ -869,28 +864,27 @@ router.get('/stats/by-product', async (req, res) => {
 
     const request = pool.request();
     addDateParams(request, { dateFrom, dateTo });
-    request.input('topN', sql.Int, top);
 
     const result = await request.query(`
-      SELECT TOP (@topN)
-        p.Id                                                          AS product_id,
-        ISNULL(p.TenHang, ISNULL(p.TenSanPham, N'Không xác định'))  AS ten_san_pham,
-        ISNULL(p.MaHang, ISNULL(p.MaSanPham, ''))                   AS ma_san_pham,
-        COUNT(DISTINCT q.Id)                                          AS so_bao_gia,
-        ISNULL(SUM(lqp.SoLuong), 0)                                  AS tong_so_luong,
-        ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)     AS tong_gia_tri,
-        ISNULL(AVG(CAST(lqp.GiaBan AS FLOAT)), 0)                    AS trung_binh_don_gia
+      SELECT
+        p.Id                                        AS product_id,
+        ISNULL(p.TenSanPham, N'Không xác định')     AS ten_san_pham,
+        ISNULL(p.SKU, '')                            AS ma_san_pham,
+        COUNT(DISTINCT q.Id)                         AS so_bao_gia,
+        ISNULL(SUM(lqp.SoLuong), 0)                 AS tong_so_luong,
+        ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)  AS tong_gia_tri,
+        ISNULL(AVG(CAST(lqp.GiaBan AS FLOAT)), 0)   AS trung_binh_don_gia
       FROM dbo.Quotation q
       INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
       INNER JOIN dbo.Product p                ON lqp.ProductId   = p.Id
       ${whereClause}
-      GROUP BY p.Id, p.TenHang, p.TenSanPham, p.MaHang, p.MaSanPham
+      GROUP BY p.Id, p.TenSanPham, p.SKU
       ORDER BY ${sortBy} DESC
     `);
 
     res.json({
       success:        true,
-      filter:         { date_from: dateFrom, date_to: dateTo, top, sort_by: sortBy },
+      filter:         { date_from: dateFrom, date_to: dateTo, sort_by: sortBy },
       tong_san_pham:  result.recordset.length,
       data:           result.recordset,
     });
@@ -965,31 +959,39 @@ router.get('/stats/by-product-group', async (req, res) => {
     const request = pool.request();
     addDateParams(request, { dateFrom, dateTo });
 
-    let groupIdExpr, groupNameExpr;
+    // Dùng subquery để GROUP BY trên cột đơn giản, tránh lỗi expression phức tạp
+    let innerGroupIdExpr, innerGroupNameExpr;
     if (level === 'child') {
-      // Nhóm con: lấy Taxonomy trực tiếp của Product (NhomThietBiId)
-      groupIdExpr   = `ISNULL(CAST(tn.Id AS NVARCHAR(50)), 'unknown')`;
-      groupNameExpr = `ISNULL(tn.TieuDe, N'Không xác định')`;
+      innerGroupIdExpr   = `CAST(tn.Id AS NVARCHAR(50))`;
+      innerGroupNameExpr = `tn.TieuDe`;
     } else {
-      // Nhóm cha: lấy Taxonomy cha (KhoaChaId)
-      groupIdExpr   = `ISNULL(CAST(tnp.Id AS NVARCHAR(50)), ISNULL(CAST(tn.Id AS NVARCHAR(50)), 'unknown'))`;
-      groupNameExpr = `ISNULL(tnp.TieuDe, ISNULL(tn.TieuDe, N'Không xác định'))`;
+      // Ưu tiên nhóm cha (tnp), fallback sang nhóm con (tn)
+      innerGroupIdExpr   = `CAST(ISNULL(tnp.Id, tn.Id) AS NVARCHAR(50))`;
+      innerGroupNameExpr = `ISNULL(tnp.TieuDe, tn.TieuDe)`;
     }
 
     const result = await request.query(`
       SELECT
-        ${groupIdExpr}                                               AS group_id,
-        ${groupNameExpr}                                             AS ten_nhom,
-        COUNT(DISTINCT q.Id)                                         AS so_bao_gia,
-        ISNULL(SUM(lqp.SoLuong), 0)                                 AS tong_so_luong,
-        ISNULL(SUM(CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong), 0)    AS tong_gia_tri
-      FROM dbo.Quotation q
-      INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
-      INNER JOIN dbo.Product p                ON lqp.ProductId   = p.Id
-      LEFT  JOIN dbo.Taxonomy tn              ON tn.Id  = p.NhomThietBiId
-      LEFT  JOIN dbo.Taxonomy tnp             ON tnp.Id = tn.KhoaChaId
-      ${whereClause}
-      GROUP BY ${groupIdExpr}, ${groupNameExpr}
+        ISNULL(sub.group_id,   'unknown')          AS group_id,
+        ISNULL(sub.ten_nhom,   N'Không xác định') AS ten_nhom,
+        COUNT(DISTINCT sub.quotation_id)            AS so_bao_gia,
+        ISNULL(SUM(sub.so_luong), 0)               AS tong_so_luong,
+        ISNULL(SUM(sub.gia_tri), 0)                AS tong_gia_tri
+      FROM (
+        SELECT
+          q.Id                                                          AS quotation_id,
+          ${innerGroupIdExpr}                                           AS group_id,
+          ${innerGroupNameExpr}                                         AS ten_nhom,
+          lqp.SoLuong                                                   AS so_luong,
+          CAST(lqp.GiaBan AS FLOAT) * lqp.SoLuong                      AS gia_tri
+        FROM dbo.Quotation q
+        INNER JOIN dbo.LinkQuotationProduct lqp ON lqp.QuotationId = q.Id
+        INNER JOIN dbo.Product p                ON lqp.ProductId   = p.Id
+        LEFT  JOIN dbo.Taxonomy tn              ON tn.Id  = p.NhomThietBiId
+        LEFT  JOIN dbo.Taxonomy tnp             ON tnp.Id = tn.KhoaChaId
+        ${whereClause}
+      ) sub
+      GROUP BY sub.group_id, sub.ten_nhom
       ORDER BY so_bao_gia DESC
     `);
 

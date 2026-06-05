@@ -1,3 +1,18 @@
+// Suppress DEP0169 url.parse() warning phát sinh từ swagger-jsdoc (thư viện bên thứ 3)
+// Xem: https://github.com/Surnet/swagger-jsdoc/issues/... (fixed trong v7+)
+const originalEmit = process.emit;
+process.emit = function (event, error) {
+  if (
+    event === 'warning' &&
+    error &&
+    error.name === 'DeprecationWarning' &&
+    error.code === 'DEP0169'
+  ) {
+    return false; // ẩn warning này
+  }
+  return originalEmit.apply(process, arguments);
+};
+
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');

@@ -520,10 +520,12 @@ router.get('/stats/revenue-by-product', async (req, res) => {
       groupCols = `tn.Id, tn.TieuDe, tnp.Id, tnp.TieuDe`;
     } else {
       // Mặc định: nhóm theo danh mục cấp cha
+      // GROUP BY dùng raw columns để SQL Server không báo lỗi aggregate,
+      // SELECT dùng ISNULL() để hiển thị giá trị fallback đúng.
       selectCols = `
         ISNULL(tnp.Id,     tn.Id)                                  AS id,
         ISNULL(tnp.TieuDe, ISNULL(tn.TieuDe, N'(Chưa phân nhóm)')) AS ten`;
-      groupCols = `ISNULL(tnp.Id, tn.Id), ISNULL(tnp.TieuDe, tn.TieuDe)`;
+      groupCols = `tn.Id, tn.TieuDe, tnp.Id, tnp.TieuDe`;
     }
 
     const result = await request.query(`

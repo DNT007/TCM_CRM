@@ -247,3 +247,15 @@ Error: bind EADDRINUSE null:3005
 2026-05-29 08:45:43: (Use `node --trace-deprecation ...` to show where the warning was created)
 2026-05-29 09:02:27: (node:12720) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
 2026-05-29 09:02:27: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-29 18:42:35: (node:18372) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-29 18:42:35: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-30 08:41:32: (node:15228) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-30 08:41:32: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-30 12:34:26: (node:13892) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-30 12:34:26: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-06-01 08:32:44: (node:18328) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-06-01 08:32:44: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-06-01 12:24:49: (node:13836) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-06-01 12:24:49: (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-06-01 15:24:53: (node:13964) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-06-01 15:24:53: (Use `node --trace-deprecation ...` to show where the warning was created)

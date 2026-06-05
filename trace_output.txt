@@ -1,0 +1,42 @@
+﻿node : (node:13516) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that 
+have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+At line:1 char:1
++ node --trace-deprecation server.js 2>&1 | Out-File -FilePath "trace_o ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:13516) [D...ulnerabilities.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at urlParse (node:url:136:13)
+    at Object.urlResolve [as resolve] (node:url:725:10)
+    at SwaggerParser.parse (E:\CTY_TECOTEC\API 
+TCT_CRM\node_modules\@apidevtools\json-schema-ref-parser\lib\index.js:103:19)
+    at SwaggerParser.parse (E:\CTY_TECOTEC\API TCT_CRM\node_modules\@apidevtools\swagger-parser\lib\index.js:60:51)
+    at SwaggerParser.parse (E:\CTY_TECOTEC\API 
+TCT_CRM\node_modules\@apidevtools\json-schema-ref-parser\lib\index.js:63:25)
+    at finalize (E:\CTY_TECOTEC\API TCT_CRM\node_modules\swagger-jsdoc\src\specification.js:109:10)
+    at build (E:\CTY_TECOTEC\API TCT_CRM\node_modules\swagger-jsdoc\src\specification.js:324:10)
+    at module.exports (E:\CTY_TECOTEC\API TCT_CRM\node_modules\swagger-jsdoc\src\lib.js:32:10)
+    at Object.<anonymous> (E:\CTY_TECOTEC\API TCT_CRM\swagger\swagger.js:47:21)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+Γ£à Kß║┐t nß╗æi SQL Server th├ánh c├┤ng: (local) | DB: TCT_CRM
+node:events:486
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3005
+    at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+    at listenInCluster (node:net:2005:12)
+    at Server.listen (node:net:2110:7)
+    at app.listen (E:\CTY_TECOTEC\API TCT_CRM\node_modules\express\lib\application.js:635:24)
+    at startServer (E:\CTY_TECOTEC\API TCT_CRM\server.js:86:9)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1984:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3005
+}
+
+Node.js v24.14.1

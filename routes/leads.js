@@ -268,13 +268,13 @@ router.get('/stats/by-area', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 4. GET /api/leads/stats/by-industry
-//    Số lead theo ngành hàng / nhóm khách hàng
+//    Số lead theo loại khách hàng (Doanh nghiệp / Cá nhân) từ RawCustomer.CustomerType
 // ══════════════════════════════════════════════════════════════════════════════
 /**
  * @swagger
  * /api/leads/stats/by-industry:
  *   get:
- *     summary: "Số lead theo ngành hàng / nhóm khách hàng (ClassifyType)"
+ *     summary: "Số lead theo loại khách hàng (Doanh nghiệp / Cá nhân) từ RawCustomer.CustomerType"
  *     tags: [Leads]
  *     security:
  *       - ApiKeyAuth: []
@@ -297,16 +297,20 @@ router.get('/stats/by-industry', async (req, res) => {
 
     const result = await request.query(`
       SELECT
-        CASE c.ClassifyType 
+        CASE rc.CustomerType
           WHEN 1 THEN N'Doanh nghiệp'
           WHEN 2 THEN N'Cá nhân'
           ELSE N'Không xác định'
-        END AS nganh_hang,
-        COUNT(l.Id) AS tong_lead
+        END                         AS loai_khach_hang,
+        rc.CustomerType             AS customer_type_code,
+        COUNT(l.Id)                 AS tong_lead,
+        -- Breakdown thêm: đại lý vs khách lẻ
+        SUM(CASE WHEN rc.PartnerType = 2 THEN 1 ELSE 0 END) AS so_dai_ly,
+        SUM(CASE WHEN rc.PartnerType = 1 THEN 1 ELSE 0 END) AS so_khach_le
       FROM dbo.Lead l
-      LEFT JOIN dbo.Customer c ON c.Id = COALESCE(l.PartnerId, l.ContactId)
+      LEFT JOIN dbo.RawCustomer rc ON rc.Id = l.RawCustomerId
       ${where}
-      GROUP BY c.ClassifyType
+      GROUP BY rc.CustomerType
       ORDER BY tong_lead DESC
     `);
 
