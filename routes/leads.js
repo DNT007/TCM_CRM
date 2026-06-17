@@ -105,13 +105,13 @@ router.get('/stats/by-time', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 2. GET /api/leads/stats/by-source
-//    Số lead theo nguồn (web, event, referral, cold…)
+//    Số lead theo nguồn – Website được phân cấp cha/con theo từng tên website
 // ══════════════════════════════════════════════════════════════════════════════
 /**
  * @swagger
  * /api/leads/stats/by-source:
  *   get:
- *     summary: "Số lead theo nguồn (web, event, referral, cold…)"
+ *     summary: "Số lead theo nguồn – Website phân cấp cha/con theo từng website"
  *     tags: [Leads]
  *     security:
  *       - ApiKeyAuth: []
@@ -120,7 +120,10 @@ router.get('/stats/by-time', async (req, res) => {
  *       - $ref: '#/components/parameters/dateTo'
  *     responses:
  *       200:
- *         description: Phân bố lead theo nguồn
+ *         description: >
+ *           Phân bố lead theo nguồn. Nguồn "Website" trả về thêm mảng
+ *           children chứa từng website con (tecostore.vn, tecotec.com.vn…)
+ *           kèm số lead tương ứng.
  */
 router.get('/stats/by-source', async (req, res) => {
   try {
@@ -132,14 +135,16 @@ router.get('/stats/by-source', async (req, res) => {
     addDateParams(request, { dateFrom, dateTo });
     const where = buildWhere('l', { dateFrom, dateTo });
 
-    // Map cứng toàn bộ node con → nhóm cha bằng CASE WHEN
+    // ── Lấy đồng thời cả ten_nguon (cha) và ten_nguon_con (tên gốc Taxonomy)
     const result = await request.query(`
       SELECT
         src.ten_nguon,
+        src.ten_nguon_con,
         COUNT(src.LeadId) AS tong_lead
       FROM (
         SELECT
           l.Id AS LeadId,
+          ISNULL(t.TieuDe, N'Không xác định') AS ten_nguon_con,
           CASE
             -- ── Website ──────────────────────────────────────────────────────
             WHEN t.TieuDe IN (
@@ -147,7 +152,7 @@ router.get('/stats/by-source', async (req, res) => {
               N'tecostore.vn', N'dealer.ingcostore.vn',
               N'tecotec.com.vn', N'ingcovietnam.vn',
               N'Chat box', N'Hotline', N'Email', N'Giỏ hàng',
-              N'Google Ads', N'Zalo Chat', N'Zalo OA',
+              N'Google Ads',
               N'Đề nghị báo giá (Header)', N'Đề nghị báo giá (Products)',
               N'LP-INGCO#Dụng cụ bảo hộ',
               N'LP-INGCO#Máy cầm tay dùng pin',
@@ -165,7 +170,7 @@ router.get('/stats/by-source', async (req, res) => {
             ) THEN N'Sale'
             -- ── Zalo ─────────────────────────────────────────────────────────
             WHEN t.TieuDe IN (
-              N'Zalo', N'Zalo Listening', N'Zalo Seeding'
+              N'Zalo', N'Zalo Listening', N'Zalo Seeding', N'Zalo Chat', N'Zalo OA'
             ) THEN N'Zalo'
             -- ── Facebook ─────────────────────────────────────────────────────
             WHEN t.TieuDe IN (
@@ -195,14 +200,88 @@ router.get('/stats/by-source', async (req, res) => {
         LEFT JOIN dbo.Taxonomy t ON l.SourceId = t.Id AND t.TaxonomyType = 3
         ${where}
       ) AS src
-      GROUP BY src.ten_nguon
-      ORDER BY tong_lead DESC
+      GROUP BY src.ten_nguon, src.ten_nguon_con
+      ORDER BY src.ten_nguon ASC, tong_lead DESC
     `);
+
+    // ── Các sub-children cấp 3 thuộc tecostore.vn ─────────────────────────
+    const TECOSTORE_SUBS = new Set([
+      'Chat box', 'Hotline', 'Email', 'Giỏ hàng', 'Google Ads',
+      'Đề nghị báo giá (Header)', 'Đề nghị báo giá (Products)',
+      'LP-INGCO#Dụng cụ bảo hộ', 'LP-INGCO#Máy cầm tay dùng pin',
+      'LP-INGCO#Máy cầm tay dùng điện', 'LP-INGCO#Dụng cụ làm vườn',
+      'LP-INGCO#Dụng cụ đo lường', 'LP-INGCO#Máy hàn và dụng cụ',
+      'LP-INGCO#Bộ dụng cụ sửa chữa', 'LP-INGCO#Dụng cụ sơn',
+      'LP-INGCO#Túi đựng đồ nghề',
+    ]);
+
+    // ── Tổng hợp phân cấp cha / con ────────────────────────────────────────
+    // Website: 3 cấp  (Website → tecostore.vn → sub-children)
+    // Các nhóm khác: 2 cấp phẳng (cha → con)
+    const parentMap        = {};  // ten_nguon → node cha
+    const tecostoreSubMap  = {};  // ten_nguon_con → tong_lead (cấp 3)
+    let   tecostoreDirectLead = 0;
+
+    for (const row of result.recordset) {
+      const { ten_nguon, ten_nguon_con, tong_lead } = row;
+
+      if (!parentMap[ten_nguon]) {
+        parentMap[ten_nguon] = { ten_nguon, tong_lead: 0, children: [] };
+      }
+      parentMap[ten_nguon].tong_lead += tong_lead;
+
+      // Bỏ node con trùng tên cha (node tổng, vd: cha="Zalo", con="Zalo")
+      if (ten_nguon_con === ten_nguon) continue;
+
+      if (ten_nguon === 'Website') {
+        if (TECOSTORE_SUBS.has(ten_nguon_con)) {
+          // Cấp 3: sub-child của tecostore.vn
+          tecostoreSubMap[ten_nguon_con] = tong_lead;
+        } else if (ten_nguon_con === 'tecostore.vn') {
+          // Lead có source chính xác = "tecostore.vn"
+          tecostoreDirectLead = tong_lead;
+        } else {
+          // Các website con trực tiếp: dealer.ingcostore.vn, tecotec.com.vn, ingcovietnam.vn
+          parentMap['Website'].children.push({ ten_nguon_con, tong_lead });
+        }
+      } else {
+        // Các nhóm khác: children phẳng 2 cấp
+        parentMap[ten_nguon].children.push({ ten_nguon_con, tong_lead });
+      }
+    }
+
+    // ── Ghép node tecostore.vn (có children cấp 3) vào Website ─────────────
+    if (parentMap['Website']) {
+      const tecoSubChildren = Object.entries(tecostoreSubMap)
+        .map(([name, lead]) => ({ ten_nguon_con: name, tong_lead: lead }))
+        .sort((a, b) => b.tong_lead - a.tong_lead);
+
+      const tecostoreTotalLead = tecostoreDirectLead +
+        tecoSubChildren.reduce((s, c) => s + c.tong_lead, 0);
+
+      const tecostoreNode = {
+        ten_nguon_con: 'tecostore.vn',
+        tong_lead:     tecostoreTotalLead,
+        ...(tecoSubChildren.length > 0 ? { children: tecoSubChildren } : {}),
+      };
+
+      parentMap['Website'].children.push(tecostoreNode);
+      // Sắp xếp children của Website theo tong_lead giảm dần
+      parentMap['Website'].children.sort((a, b) => b.tong_lead - a.tong_lead);
+    }
+
+    // ── Sắp xếp cha theo tong_lead giảm dần ────────────────────────────────
+    const data = Object.values(parentMap).sort((a, b) => b.tong_lead - a.tong_lead);
+
+    // Xoá children rỗng (vd: Showroom TKX chỉ có 1 node = chính nó)
+    for (const item of data) {
+      if (item.children && item.children.length === 0) delete item.children;
+    }
 
     res.json({
       success: true,
       filter:  { date_from: dateFrom, date_to: dateTo },
-      data:    result.recordset,
+      data,
     });
   } catch (err) {
     console.error('[GET /leads/stats/by-source]', err.message);
