@@ -822,6 +822,280 @@ router.get('/stats/revenue-new-vs-returning', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// STATS 6. GET /api/customers/stats/close-won
+//    Danh sách đơn hàng Close Won (Quotation.TinhTrang = 4)
+//
+//    JOIN sử dụng:
+//      • dbo.Quotation              — bảng chính, lọc TinhTrang = 4
+//      • dbo.Customer c             — thông tin khách hàng (Quotation.PartnerId)
+//      • dbo.Customer ct            — người liên hệ (Quotation.ContactId)
+//      • dbo.LinkQuotationProduct   — tính Giá bán, Giá vốn, CGCN
+//
+//    Lọc theo: Quotation.NgayTiepNhan (date_from / date_to)
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * @swagger
+ * /api/customers/stats/close-won:
+ *   get:
+ *     summary: "Danh sách đơn hàng Close Won"
+ *     description: |
+ *       Lấy toàn bộ danh sách báo giá/đơn hàng có trạng thái **Close Won** (`Quotation.TinhTrang = 4`).
+ *
+ *       **Lọc theo ngày**: `Quotation.NgayTiepNhan` (ngày tiếp nhận / ngày ký).
+ *       - Nếu truyền `date_from`/`date_to` mà không có dữ liệu → tự động fallback về toàn bộ dữ liệu.
+ *
+ *       **Tài chính** (tính từ `LinkQuotationProduct`):
+ *       - `gia_ban`       = SUM(GiaBan × SoLuong)
+ *       - `gia_von`       = SUM(GiaNhap × SoLuong)
+ *       - `cgcn`          = SUM(PhiCGCN × SoLuong)
+ *       - `lai_chua_thue` = gia_ban − gia_von − cgcn
+ *       - `gt_don_hang`   = Quotation.TongGiaTri (tổng giá trị đơn hàng)
+ *
+ *       **Bảng JOIN**:
+ *       ```
+ *       dbo.Quotation (TinhTrang = 4)
+ *         ← dbo.Customer c   (Quotation.PartnerId = c.Id)
+ *         ← dbo.Customer ct  (Quotation.ContactId = ct.Id)  [LEFT JOIN – người liên hệ]
+ *         ← dbo.LinkQuotationProduct  (QuotationId = Quotation.Id) [LEFT JOIN – tài chính]
+ *       ```
+ *     tags: [Customers]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date_from
+ *         schema: { type: string, format: date }
+ *         description: Lọc từ ngày (NgayTiepNhan) — yyyy-MM-dd
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: date_to
+ *         schema: { type: string, format: date }
+ *         description: Lọc đến ngày (NgayTiepNhan) — yyyy-MM-dd
+ *         example: "2024-12-31"
+ *     responses:
+ *       200:
+ *         description: Danh sách Close Won thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 filter:
+ *                   type: object
+ *                   properties:
+ *                     date_from:           { type: string }
+ *                     date_to:             { type: string }
+ *                     fallback_to_all:     { type: boolean, description: "true nếu không có data trong khoảng lọc → trả toàn bộ" }
+ *                     data_range_available:
+ *                       type: object
+ *                       properties:
+ *                         min:           { type: string, description: "Ngày tiếp nhận nhỏ nhất trong DB" }
+ *                         max:           { type: string, description: "Ngày tiếp nhận lớn nhất trong DB" }
+ *                         total_records: { type: integer, description: "Tổng số bản ghi Close Won trong DB" }
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     tong_khach_hang:    { type: integer, description: "Số khách hàng phân biệt" }
+ *                     tong_bao_gia:       { type: integer, description: "Tổng số đơn hàng" }
+ *                     tong_gt_don_hang:   { type: number,  description: "Tổng giá trị đơn hàng (TongGiaTri)" }
+ *                     tong_gia_ban:       { type: number,  description: "Tổng doanh thu (GiaBan × SoLuong)" }
+ *                     tong_gia_von:       { type: number,  description: "Tổng giá vốn (GiaNhap × SoLuong)" }
+ *                     tong_cgcn:          { type: number,  description: "Tổng chi phí CGCN (PhiCGCN × SoLuong)" }
+ *                     tong_lai_chua_thue: { type: number,  description: "Lợi nhuận trước thuế = Bán − Vốn − CGCN" }
+ *                 total: { type: integer, description: "Số dòng trong mảng data" }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       stt:               { type: integer }
+ *                       customer_id:       { type: integer }
+ *                       ten_khach_hang:    { type: string }
+ *                       phan_loai:         { type: string, description: "Cá nhân | Doanh nghiệp" }
+ *                       loai_hinh:         { type: string, description: "Khách hàng | Đại lý/Partner" }
+ *                       muc_do_qh:         { type: integer, description: "Customer.TinhTrang" }
+ *                       icp:               { type: boolean }
+ *                       dia_chi:           { type: string }
+ *                       nguoi_lien_he:     { type: string }
+ *                       sdt:               { type: string }
+ *                       quotation_id:      { type: integer }
+ *                       ma_bao_gia:        { type: string }
+ *                       ngay_ky:           { type: string, format: date-time, description: "NgayTiepNhan" }
+ *                       gia_ban:           { type: number }
+ *                       gia_von:           { type: number }
+ *                       cgcn:              { type: number }
+ *                       lai_chua_thue:     { type: number }
+ *                       gt_don_hang:       { type: number }
+ *                       sale_phu_trach:    { type: integer, description: "NguoiXuLyId" }
+ *                       ky_su_ban_giao:    { type: integer, description: "KySuBanGiaoId" }
+ *                       ky_su_ung_dung:    { type: integer, description: "KySuUngDungId" }
+ *                       tro_ly_kinh_doanh: { type: integer, description: "TroLyKinhDoanhId" }
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/stats/close-won', async (req, res) => {
+  try {
+    const pool      = getPool();
+    const dateFrom  = req.query.date_from  || null;
+    const dateTo    = req.query.date_to    || null;
+    // date_field: ngay_tiep_nhan | ngay_tao | ngay_cap_nhat  (mặc định: ngay_tiep_nhan)
+    const dateField = req.query.date_field || 'ngay_tiep_nhan';
+
+    // Map date_field → tên cột trong DB
+    const DATE_FIELD_MAP = {
+      ngay_tiep_nhan: 'q.NgayTiepNhan',
+      ngay_tao:       'q.NgayTao',
+      ngay_cap_nhat:  'q.NgayCapNhat',
+    };
+    const dbCol = DATE_FIELD_MAP[dateField] || 'q.NgayTiepNhan';
+
+    // ── Build WHERE cho Close Won ──────────────────────────────────────────
+    // TinhTrang = 4 → Close Won; TrangThai != 0 → bao gồm tất cả trừ bị xóa mềm
+    const BASE = 'q.TrangThai != 0 AND q.TinhTrang = 4 AND q.PartnerId IS NOT NULL';
+
+    // Dùng DateTime để so sánh khớp với cách UI lọc ngày
+    const dateConds = [];
+    if (dateFrom) dateConds.push(`${dbCol} >= @dateFrom`);
+    if (dateTo)   dateConds.push(`${dbCol} <= @dateTo`);
+    const dateExtra  = dateConds.length ? 'AND ' + dateConds.join(' AND ') : '';
+    const finalWhere = `WHERE ${BASE} ${dateExtra}`;
+
+    // Helper tạo request với date params
+    const makeReq = () => {
+      const r = pool.request();
+      if (dateFrom) r.input('dateFrom', sql.DateTime, new Date(dateFrom));
+      if (dateTo)   r.input('dateTo',   sql.DateTime, new Date(dateTo + 'T23:59:59'));
+      return r;
+    };
+
+    console.log('[close-won] WHERE:', finalWhere, '| dateFrom:', dateFrom, '| dateTo:', dateTo, '| field:', dbCol);
+
+    // ── Bước 2: Summary + Data song song (2 query) ────────────────────────────
+    const lqpSub = `
+      LEFT JOIN (
+        SELECT QuotationId,
+               CAST(SUM(GiaBan  * SoLuong) AS FLOAT) AS TongGiaBan,
+               CAST(SUM(GiaNhap * SoLuong) AS FLOAT) AS TongGiaVon,
+               CAST(SUM(PhiCGCN * SoLuong) AS FLOAT) AS TongCGCN
+        FROM dbo.LinkQuotationProduct
+        GROUP BY QuotationId
+      ) lqp ON lqp.QuotationId = q.Id
+    `;
+
+    const [sumRes, dataRes] = await Promise.all([
+      makeReq().query(`
+        SELECT
+          COUNT(DISTINCT q.PartnerId)                          AS tong_khach_hang,
+          COUNT(q.Id)                                          AS tong_bao_gia,
+          ISNULL(SUM(CAST(q.TongGiaTri   AS FLOAT)), 0)       AS tong_gt_don_hang,
+          ISNULL(SUM(CAST(lqp.TongGiaBan AS FLOAT)), 0)       AS tong_gia_ban,
+          ISNULL(SUM(CAST(lqp.TongGiaVon AS FLOAT)), 0)       AS tong_gia_von,
+          ISNULL(SUM(CAST(lqp.TongCGCN   AS FLOAT)), 0)       AS tong_cgcn
+        FROM dbo.Quotation q
+        INNER JOIN dbo.Customer c ON c.Id = q.PartnerId
+        ${lqpSub}
+        ${finalWhere}
+      `),
+      makeReq().query(`
+        SELECT
+          c.Id                  AS customer_id,
+          c.TenKhachHang,
+          CASE c.ClassifyType
+            WHEN 1 THEN N'Cá nhân'
+            WHEN 2 THEN N'Doanh nghiệp'
+            ELSE        N'Không xác định'
+          END                   AS phan_loai,
+          CASE c.CustomerType
+            WHEN 1 THEN N'Khách hàng'
+            WHEN 2 THEN N'Đại lý/Partner'
+            ELSE        N'Không xác định'
+          END                   AS loai_hinh,
+          c.TinhTrang           AS muc_do_qh,
+          c.ICP,
+          c.DiaChi,
+          ct.TenKhachHang       AS nguoi_lien_he,
+          ISNULL(ct.SoDiDong, c.SoDiDong) AS sdt,
+          q.Id                  AS quotation_id,
+          q.MaBaoGia            AS ma_bao_gia,
+          q.NgayTiepNhan        AS ngay_ky,
+          CAST(q.TongGiaTri AS FLOAT)    AS gt_don_hang,
+          ISNULL(lqp.TongGiaBan, 0)      AS gia_ban,
+          ISNULL(lqp.TongGiaVon, 0)      AS gia_von,
+          ISNULL(lqp.TongCGCN,   0)      AS cgcn,
+          ISNULL(lqp.TongGiaBan, 0)
+            - ISNULL(lqp.TongGiaVon, 0)
+            - ISNULL(lqp.TongCGCN,   0) AS lai_chua_thue,
+          q.NguoiXuLyId      AS sale_phu_trach,
+          q.KySuBanGiaoId    AS ky_su_ban_giao,
+          q.KySuUngDungId    AS ky_su_ung_dung,
+          q.TroLyKinhDoanhId AS tro_ly_kinh_doanh
+        FROM dbo.Quotation q
+        INNER JOIN dbo.Customer c  ON c.Id  = q.PartnerId
+        LEFT  JOIN dbo.Customer ct ON ct.Id = q.ContactId
+        ${lqpSub}
+        ${finalWhere}
+        ORDER BY q.NgayTiepNhan DESC
+      `),
+    ]);
+
+    const s          = sumRes.recordset[0];
+    const tongGiaBan = Math.round(Number(s.tong_gia_ban) || 0);
+    const tongGiaVon = Math.round(Number(s.tong_gia_von) || 0);
+    const tongCGCN   = Math.round(Number(s.tong_cgcn)    || 0);
+
+    const data = dataRes.recordset.map((r, i) => ({
+      stt:               i + 1,
+      customer_id:       r.customer_id,
+      ten_khach_hang:    r.TenKhachHang,
+      phan_loai:         r.phan_loai,
+      loai_hinh:         r.loai_hinh,
+      muc_do_qh:         r.muc_do_qh,
+      icp:               r.ICP,
+      dia_chi:           r.DiaChi,
+      nguoi_lien_he:     r.nguoi_lien_he,
+      sdt:               r.sdt,
+      quotation_id:      r.quotation_id,
+      ma_bao_gia:        r.ma_bao_gia,
+      ngay_ky:           r.ngay_ky,
+      gia_ban:           Math.round(Number(r.gia_ban)       || 0),
+      gia_von:           Math.round(Number(r.gia_von)       || 0),
+      cgcn:              Math.round(Number(r.cgcn)          || 0),
+      lai_chua_thue:     Math.round(Number(r.lai_chua_thue) || 0),
+      gt_don_hang:       Math.round(Number(r.gt_don_hang)   || 0),
+      sale_phu_trach:    r.sale_phu_trach,
+      ky_su_ban_giao:    r.ky_su_ban_giao,
+      ky_su_ung_dung:    r.ky_su_ung_dung,
+      tro_ly_kinh_doanh: r.tro_ly_kinh_doanh,
+    }));
+
+    res.json({
+      success: true,
+      filter: {
+        date_from:       dateFrom,
+        date_to:         dateTo,
+        date_field_used: dbCol,   // DEBUG: cột đang dùng để lọc ngày
+      },
+      summary: {
+        tong_khach_hang:    s.tong_khach_hang || 0,
+        tong_don_hang:      s.tong_bao_gia    || 0,
+        tong_gt_don_hang:   Math.round(Number(s.tong_gt_don_hang) || 0),
+        tong_gia_ban:       tongGiaBan,
+        tong_gia_von:       tongGiaVon,
+        tong_cgcn:          tongCGCN,
+        tong_lai_chua_thue: tongGiaBan - tongGiaVon - tongCGCN,
+      },
+      total: data.length,
+      data,
+    });
+  } catch (err) {
+    console.error('[GET /customers/stats/close-won]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
 /**
  * @swagger
  * /api/customers/{id}:
